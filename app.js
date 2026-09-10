@@ -118,13 +118,13 @@ function submitSentence() {
   $('confirmSave').disabled = true;
   $('saveMessage').textContent = 'Saving to Google Sheets…';
   const beforeIds = new Set(state.sentences.map(s => s.recordId));
-  const form = document.createElement('form');
-  form.method = 'POST'; form.action = API_URL; form.target = 'submissionFrame'; form.hidden = true;
   const fields = { action:'create', pin, content:state.preview.originalPaste, aiSource:state.preview.aiSource };
-  Object.entries(fields).forEach(([name,value]) => {
-    const input = document.createElement('input'); input.name = name; input.value = value; form.appendChild(input);
-  });
-  document.body.appendChild(form); form.submit(); form.remove();
+  fetch(API_URL, {
+    method: 'POST',
+    mode: 'no-cors',
+    headers: {'Content-Type':'application/x-www-form-urlencoded;charset=UTF-8'},
+    body: new URLSearchParams(fields)
+  }).catch(() => {});
 
   let checks = 0;
   const verify = setInterval(() => {
