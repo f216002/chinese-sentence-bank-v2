@@ -118,8 +118,9 @@ function submitSentence() {
 
   $('confirmSave').disabled = true;
   $('saveMessage').textContent = 'Opening Google confirmation…';
+  const submitted = { ...state.preview };
   const beforeIds = new Set(state.sentences.map(s => s.recordId));
-  const fields = { action:'create', pin, content:state.preview.originalPaste, aiSource:state.preview.aiSource };
+  const fields = { action:'create', pin, content:submitted.originalPaste, aiSource:submitted.aiSource };
   const form = document.createElement('form');
   form.method = 'POST'; form.action = API_URL; form.target = '_blank'; form.hidden = true;
   Object.entries(fields).forEach(([name,value]) => {
@@ -135,16 +136,22 @@ function submitSentence() {
     window[callback] = data => {
       delete window[callback]; script.remove();
       const rows = data && data.success ? data.sentences || [] : [];
-      const added = rows.find(row => !beforeIds.has(row.recordId) && row.originalPaste === state.preview.originalPaste);
+      const added = rows.find(row =>
+        row.recordId &&
+        !beforeIds.has(row.recordId) &&
+        row.hindiSentence === submitted.hindiSentence &&
+        row.chineseSentence === submitted.chineseSentence &&
+        row.pinyin === submitted.pinyin
+      );
       if (added) {
         clearInterval(verify); state.sentences = rows;
         $('sentenceCount').textContent = rows.length; renderSentences();
         $('saveMessage').textContent = 'Saved successfully!'; $('confirmSave').disabled = false;
         $('pasteInput').value = ''; $('previewPanel').classList.add('hidden');
         setTimeout(() => { $('pinDialog').close(); $('libraryTitle').scrollIntoView({behavior:'smooth'}); }, 800);
-      } else if (checks >= 5) {
+      } else if (checks >= 10) {
         clearInterval(verify); $('confirmSave').disabled = false;
-        $('saveMessage').textContent = 'Could not confirm the save. Check the PIN and try again.';
+        $('saveMessage').textContent = 'The submission was sent, but confirmation is taking longer than expected. Refresh the page before trying again.';
       }
     };
     const script = document.createElement('script');
