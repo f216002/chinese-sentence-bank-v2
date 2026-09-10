@@ -68,8 +68,23 @@
         <span class="result-count" id="resultCount"></span>
       </div>
       <div class="tools">
-        <label class="search-field"><span aria-hidden="true">⌕</span><span class="sr-only">Search sentences</span><input id="searchInput" type="search" placeholder="Search Hindi, Chinese or pinyin…"></label>
-        <label><span class="sr-only">Filter by category</span><select id="categoryFilter"><option value="">All categories</option></select></label>
+        <div class="search-builder" aria-label="Advanced keyword search">
+          <label class="keyword-field"><span class="keyword-label">A</span><span class="sr-only">First keyword</span><input id="keywordA" type="search" placeholder="First keyword"></label>
+          <label class="operator-field"><span class="sr-only">Operator between keywords A and B</span><select id="operatorAB"><option value="AND">AND</option><option value="OR">OR</option></select></label>
+          <label class="keyword-field"><span class="keyword-label">B</span><span class="sr-only">Second keyword</span><input id="keywordB" type="search" placeholder="Second keyword"></label>
+          <label class="operator-field"><span class="sr-only">Operator between keywords B and C</span><select id="operatorBC"><option value="AND">AND</option><option value="OR">OR</option></select></label>
+          <label class="keyword-field"><span class="keyword-label">C</span><span class="sr-only">Third keyword</span><input id="keywordC" type="search" placeholder="Third keyword"></label>
+          <small class="search-help">Searches Hindi, Chinese, pinyin, explanations, topics and tags. Calculated left to right.</small>
+        </div>
+        <div class="topic-picker" id="topicPicker">
+          <button class="topic-toggle" id="topicToggle" type="button" aria-expanded="false" aria-controls="topicMenu">
+            <span><small>Topics</small><strong id="topicSummary">All topics</strong></span><span aria-hidden="true">⌄</span>
+          </button>
+          <div class="topic-menu hidden" id="topicMenu">
+            <label class="topic-option topic-option-all"><input id="topicAll" type="checkbox" checked><span class="check-circle" aria-hidden="true"></span><span>Select all topics</span></label>
+            <div id="topicOptions"></div>
+          </div>
+        </div>
       </div>
       <div class="sentence-grid" id="sentenceGrid" aria-live="polite">
         <div class="loading-card">Loading your sentences…</div>
