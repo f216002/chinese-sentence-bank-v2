@@ -1,5 +1,6 @@
 const API_URL = 'https://script.google.com/macros/s/AKfycbw9trkW9RNCRSwWou_51Q-FP6aL7Lp8sy3zizSG83fzN1Urtd3ZiMc47RUfHDBTIMJfDw/exec';
 const SAMPLE = `HINDI:\nमुझे बैंक से पैसे निकालने हैं।\n\nCHINESE:\n我要去銀行領錢。\n\nPINYIN:\nWǒ yào qù yínháng lǐng qián.\n\nEXPLANATION:\n我要 (wǒ yào) का अर्थ है “मैं ... करना चाहता/चाहती हूँ।”\n去 (qù) का अर्थ “जाना” है।\n銀行 (yínháng) का अर्थ “बैंक” है।\n領錢 (lǐng qián) का अर्थ बैंक से पैसे निकालना है।\n中文語序 (Zhōngwén yǔxù): 主語 (zhǔyǔ) + 要 (yào) + 去 (qù) + 地點 (dìdiǎn) + 動作 (dòngzuò)。\n\nCATEGORY:\nBank`;
+const AI_PROMPT = `You are a Taiwanese Mandarin teacher for a Hindi-speaking beginner. Convert the Hindi sentence below into natural Traditional Chinese used in Taiwan.\n\nHINDI SENTENCE:\n[Paste one Hindi sentence here]\n\nReturn ONLY the following labelled sections. Do not add an introduction or conclusion. Keep every label exactly as written and do not add Markdown symbols such as ** around the labels.\n\nHINDI:\n[Repeat the original Hindi sentence]\n\nCHINESE:\n[One natural Traditional Chinese sentence used in Taiwan]\n\nPINYIN:\n[Hanyu Pinyin with tone marks for the complete Chinese sentence]\n\nEXPLANATION:\n[Explain every Chinese word and the grammar in clear Hindi. Whenever any Chinese character, word, phrase, or example appears, immediately add its pinyin in parentheses. Use Traditional Chinese only.]\n\nCATEGORY:\n[Choose exactly one: Daily Life, School, Home, Restaurant, Shopping, Bank, Hospital, Travel, Train & Bus, Airport, Work, Friends, Other]\n\nTAGS:\n[Three to five short English keywords separated by commas]\n\nAI SOURCE:\n[Write ChatGPT or Gemini]`;
 
 const state = { sentences: [], categories: [], settings: {}, preview: null };
 const $ = (id) => document.getElementById(id);
@@ -7,7 +8,7 @@ const $ = (id) => document.getElementById(id);
 function parsePaste(text) {
   const labels = ['HINDI', 'CHINESE', 'PINYIN', 'EXPLANATION', 'CATEGORY', 'TAGS', 'AI SOURCE'];
   const found = {};
-  const pattern = new RegExp(`(?:^|\\n)\\s*(${labels.join('|')})\\s*:\\s*`, 'gi');
+  const pattern = new RegExp(`(?:^|\\n)\\s*(?:\\*\\*)?\\s*(${labels.join('|')})\\s*:?\\s*(?:\\*\\*)?\\s*:?\\s*`, 'gi');
   const matches = [...text.matchAll(pattern)];
   matches.forEach((match, index) => {
     const key = match[1].toUpperCase();
@@ -167,6 +168,11 @@ $('previewButton').addEventListener('click', handlePreview);
 $('searchInput').addEventListener('input', renderSentences);
 $('categoryFilter').addEventListener('change', renderSentences);
 $('helpButton').addEventListener('click', () => $('helpDialog').showModal());
+$('copyPrompt').addEventListener('click', async () => {
+  await navigator.clipboard.writeText(AI_PROMPT);
+  const button = $('copyPrompt'); button.textContent = 'Copied!';
+  setTimeout(() => { button.textContent = 'Copy AI prompt'; }, 1400);
+});
 $('closeHelp').addEventListener('click', () => $('helpDialog').close());
 $('helpDialog').addEventListener('click', e => { if (e.target === $('helpDialog')) $('helpDialog').close(); });
 $('saveButton').addEventListener('click', openPinDialog);
