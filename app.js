@@ -167,12 +167,12 @@ function submitSentence() {
   else { try { localStorage.removeItem('csbSubmissionPin'); } catch (_) {} }
 
   $('confirmSave').disabled = true;
-  $('saveMessage').textContent = 'Opening Google confirmation…';
+  $('saveMessage').textContent = 'Saving sentence…';
   const submitted = { ...state.preview };
   const beforeIds = new Set(state.sentences.map(s => s.recordId));
   const fields = { action:'create', pin, content:submitted.originalPaste, aiSource:submitted.aiSource };
   const form = document.createElement('form');
-  form.method = 'POST'; form.action = API_URL; form.target = '_blank'; form.hidden = true;
+  form.method = 'POST'; form.action = API_URL; form.target = 'submissionFrame'; form.hidden = true;
   Object.entries(fields).forEach(([name,value]) => {
     const field = name === 'content' ? document.createElement('textarea') : document.createElement('input');
     field.name = name; field.value = value; form.appendChild(field);
