@@ -100,6 +100,57 @@ function showApiError(message) {
   $('sentenceGrid').innerHTML = `<div class="loading-card">${message} Refresh the page to try again.</div>`;
 }
 
+function openPinDialog() {
+  if (!state.preview) return;
+  try { $('pinInput').value = localStorage.getItem('csbSubmissionPin') || ''; } catch (_) {}
+  $('saveMessage').textContent = '';
+  $('pinDialog').showModal();
+  setTimeout(() => $('pinInput').focus(), 50);
+}
+
+function submitSentence() {
+  const pin = $('pinInput').value.trim();
+  if (!pin) { $('saveMessage').textContent = 'Enter the submission PIN.'; return; }
+  if (!state.preview) { $('pinDialog').close(); return; }
+  if ($('rememberPin').checked) { try { localStorage.setItem('csbSubmissionPin', pin); } catch (_) {} }
+  else { try { localStorage.removeItem('csbSubmissionPin'); } catch (_) {} }
+
+  $('confirmSave').disabled = true;
+  $('saveMessage').textContent = 'Saving to Google Sheets…';
+  const beforeIds = new Set(state.sentences.map(s => s.recordId));
+  const form = document.createElement('form');
+  form.method = 'POST'; form.action = API_URL; form.target = 'submissionFrame'; form.hidden = true;
+  const fields = { action:'create', pin, content:state.preview.originalPaste, aiSource:state.preview.aiSource };
+  Object.entries(fields).forEach(([name,value]) => {
+    const input = document.createElement('input'); input.name = name; input.value = value; form.appendChild(input);
+  });
+  document.body.appendChild(form); form.submit(); form.remove();
+
+  let checks = 0;
+  const verify = setInterval(() => {
+    checks += 1;
+    const callback = `verifySave${Date.now()}`;
+    window[callback] = data => {
+      delete window[callback]; script.remove();
+      const rows = data && data.success ? data.sentences || [] : [];
+      const added = rows.find(row => !beforeIds.has(row.recordId) && row.originalPaste === state.preview.originalPaste);
+      if (added) {
+        clearInterval(verify); state.sentences = rows;
+        $('sentenceCount').textContent = rows.length; renderSentences();
+        $('saveMessage').textContent = 'Saved successfully!'; $('confirmSave').disabled = false;
+        $('pasteInput').value = ''; $('previewPanel').classList.add('hidden');
+        setTimeout(() => { $('pinDialog').close(); $('libraryTitle').scrollIntoView({behavior:'smooth'}); }, 800);
+      } else if (checks >= 5) {
+        clearInterval(verify); $('confirmSave').disabled = false;
+        $('saveMessage').textContent = 'Could not confirm the save. Check the PIN and try again.';
+      }
+    };
+    const script = document.createElement('script');
+    script.src = `${API_URL}?action=list&callback=${callback}&_=${Date.now()}`;
+    document.body.appendChild(script);
+  }, 1800);
+}
+
 function loadBank() {
   window.sentenceBankCallback = receiveBank;
   const script = document.createElement('script');
@@ -117,4 +168,8 @@ $('categoryFilter').addEventListener('change', renderSentences);
 $('helpButton').addEventListener('click', () => $('helpDialog').showModal());
 $('closeHelp').addEventListener('click', () => $('helpDialog').close());
 $('helpDialog').addEventListener('click', e => { if (e.target === $('helpDialog')) $('helpDialog').close(); });
+$('saveButton').addEventListener('click', openPinDialog);
+$('confirmSave').addEventListener('click', submitSentence);
+$('pinInput').addEventListener('keydown', e => { if (e.key === 'Enter') submitSentence(); });
+$('closePin').addEventListener('click', () => $('pinDialog').close());
 loadBank();
