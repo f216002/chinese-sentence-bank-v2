@@ -2,7 +2,7 @@ const API_URL = 'https://script.google.com/macros/s/AKfycbw9trkW9RNCRSwWou_51Q-F
 const SAMPLE = `HINDI:\nमुझे बैंक से पैसे निकालने हैं।\n\nCHINESE:\n我要去銀行領錢。\n\nPINYIN:\nWǒ yào qù yínháng lǐng qián.\n\nEXPLANATION:\n我要 (wǒ yào) का अर्थ है “मैं ... करना चाहता/चाहती हूँ।”\n去 (qù) का अर्थ “जाना” है।\n銀行 (yínháng) का अर्थ “बैंक” है।\n領錢 (lǐng qián) का अर्थ बैंक से पैसे निकालना है।\n中文語序 (Zhōngwén yǔxù): 主語 (zhǔyǔ) + 要 (yào) + 去 (qù) + 地點 (dìdiǎn) + 動作 (dòngzuò)。\n\nCATEGORY:\nBank`;
 const AI_PROMPT = `You are a Taiwanese Mandarin teacher for a Hindi-speaking beginner. Convert the Hindi sentence below into natural Traditional Chinese used in Taiwan.\n\nHINDI SENTENCE:\n[Paste one Hindi sentence here]\n\nReturn ONLY the following labelled sections. Do not add an introduction or conclusion. Keep every label exactly as written and do not add Markdown symbols such as ** around the labels.\n\nHINDI:\n[Repeat the original Hindi sentence]\n\nCHINESE:\n[One natural Traditional Chinese sentence used in Taiwan]\n\nPINYIN:\n[Hanyu Pinyin with tone marks for the complete Chinese sentence]\n\nEXPLANATION:\n[Explain every Chinese word and the grammar in clear Hindi. Whenever any Chinese character, word, phrase, or example appears, immediately add its pinyin in parentheses. Use Traditional Chinese only.]\n\nCATEGORY:\n[Choose exactly one: Daily Life, School, Home, Restaurant, Shopping, Bank, Hospital, Travel, Train & Bus, Airport, Work, Friends, Other]\n\nTAGS:\n[Three to five short English keywords separated by commas]\n\nAI SOURCE:\n[Write ChatGPT or Gemini]`;
 
-const state = { sentences: [], categories: [], settings: {}, preview: null };
+const state = { sentences: [], categories: [], selectedCategories: new Set(), settings: {}, preview: null };
 const $ = (id) => document.getElementById(id);
 
 function parsePaste(text) {
@@ -54,17 +54,67 @@ function speakChinese(text, button) {
 }
 
 function renderFilters() {
-  const select = $('categoryFilter');
-  select.innerHTML = '<option value="">All categories</option>';
-  state.categories.forEach(category => select.add(new Option(category, category)));
+  const mount = $('topicOptions');
+  mount.innerHTML = '';
+  state.selectedCategories = new Set(state.categories.map(normalizeSearchText));
+  state.categories.forEach((category, index) => {
+    const label = document.createElement('label');
+    label.className = 'topic-option';
+    label.innerHTML = `<input type="checkbox" value=""><span class="check-circle" aria-hidden="true"></span><span class="topic-name"></span>`;
+    const input = label.querySelector('input');
+    input.value = category;
+    input.checked = true;
+    input.id = `topic-${index}`;
+    label.querySelector('.topic-name').textContent = category;
+    input.addEventListener('change', () => {
+      const key = normalizeSearchText(category);
+      if (input.checked) state.selectedCategories.add(key);
+      else state.selectedCategories.delete(key);
+      updateTopicPicker();
+      renderSentences();
+    });
+    mount.appendChild(label);
+  });
+  updateTopicPicker();
+}
+
+function normalizeSearchText(value) {
+  return String(value || '').normalize('NFKC').trim().replace(/\s+/g, ' ').toLocaleLowerCase();
+}
+
+function sentenceTopics(sentence) {
+  const known = new Set(state.categories.map(normalizeSearchText));
+  const values = [sentence.category].concat(String(sentence.tags || '').split(/[,;|]/));
+  return new Set(values.map(normalizeSearchText).filter(value => known.has(value)));
+}
+
+function matchesKeywordExpression(haystack) {
+  const terms = ['keywordA', 'keywordB', 'keywordC'].map(id => normalizeSearchText($(id).value));
+  const operations = [$('operatorAB').value, $('operatorBC').value];
+  let result = null;
+  terms.forEach((term, index) => {
+    if (!term) return;
+    const found = haystack.includes(term);
+    if (result === null) result = found;
+    else result = operations[index - 1] === 'OR' ? result || found : result && found;
+  });
+  return result === null ? true : result;
+}
+
+function updateTopicPicker() {
+  const total = state.categories.length;
+  const selected = state.selectedCategories.size;
+  const all = $('topicAll');
+  all.checked = total > 0 && selected === total;
+  all.indeterminate = selected > 0 && selected < total;
+  $('topicSummary').textContent = selected === total ? 'All topics' : selected === 0 ? 'No topics' : `${selected} topics selected`;
 }
 
 function renderSentences() {
-  const query = $('searchInput').value.trim().toLowerCase();
-  const category = $('categoryFilter').value;
   const visible = state.sentences.filter(s => {
-    const haystack = [s.hindiSentence,s.chineseSentence,s.pinyin,s.hindiExplanation,s.tags].join(' ').toLowerCase();
-    return (!query || haystack.includes(query)) && (!category || s.category === category);
+    const haystack = normalizeSearchText([s.recordId,s.hindiSentence,s.chineseSentence,s.pinyin,s.hindiExplanation,s.category,s.tags].join(' '));
+    const topicMatch = [...sentenceTopics(s)].some(topic => state.selectedCategories.has(topic));
+    return matchesKeywordExpression(haystack) && topicMatch;
   });
   const grid = $('sentenceGrid'); grid.innerHTML = '';
   visible.forEach(s => grid.appendChild(createCard(s)));
@@ -172,8 +222,31 @@ $('startButton').addEventListener('click', () => $('addSentence').scrollIntoView
 $('sampleButton').addEventListener('click', () => { $('pasteInput').value = SAMPLE; $('pasteInput').focus(); });
 $('clearButton').addEventListener('click', () => { $('pasteInput').value = ''; $('parseMessage').textContent = ''; $('previewPanel').classList.add('hidden'); });
 $('previewButton').addEventListener('click', handlePreview);
-$('searchInput').addEventListener('input', renderSentences);
-$('categoryFilter').addEventListener('change', renderSentences);
+['keywordA','keywordB','keywordC'].forEach(id => $(id).addEventListener('input', renderSentences));
+['operatorAB','operatorBC'].forEach(id => $(id).addEventListener('change', renderSentences));
+$('topicToggle').addEventListener('click', () => {
+  const open = !$('topicMenu').classList.contains('hidden');
+  $('topicMenu').classList.toggle('hidden', open);
+  $('topicToggle').setAttribute('aria-expanded', String(!open));
+});
+$('topicAll').addEventListener('change', () => {
+  const shouldSelectAll = $('topicAll').checked;
+  state.selectedCategories = new Set(shouldSelectAll ? state.categories.map(normalizeSearchText) : []);
+  $('topicOptions').querySelectorAll('input').forEach(input => { input.checked = shouldSelectAll; });
+  updateTopicPicker(); renderSentences();
+});
+document.addEventListener('click', event => {
+  if (!$('topicPicker').contains(event.target)) {
+    $('topicMenu').classList.add('hidden');
+    $('topicToggle').setAttribute('aria-expanded', 'false');
+  }
+});
+document.addEventListener('keydown', event => {
+  if (event.key === 'Escape') {
+    $('topicMenu').classList.add('hidden');
+    $('topicToggle').setAttribute('aria-expanded', 'false');
+  }
+});
 $('helpButton').addEventListener('click', () => $('helpDialog').showModal());
 $('copyPrompt').addEventListener('click', async () => {
   await navigator.clipboard.writeText(AI_PROMPT);
