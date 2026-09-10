@@ -57,8 +57,8 @@
       </div>
       <div id="previewCard"></div>
       <div class="save-row">
-        <p>Your Google Sheet is protected. A submission PIN will be added in the next step.</p>
-        <button class="primary-button" id="saveButton" type="button" disabled>Save to my bank</button>
+        <p>Your Google Sheet is protected. Enter your private submission PIN when saving.</p>
+        <button class="primary-button" id="saveButton" type="button">Save to my bank</button>
       </div>
     </section>
 
@@ -100,6 +100,19 @@ EXPLANATION:
 CATEGORY:
 [One category]</pre>
   </dialog>
+
+  <dialog id="pinDialog">
+    <button class="dialog-close" id="closePin" aria-label="Close PIN window">×</button>
+    <span class="step">SECURE SUBMISSION</span>
+    <h2>Enter your submission PIN</h2>
+    <p>The PIN stays on this device. It is never stored in the public GitHub code.</p>
+    <label class="pin-field">Submission PIN<input id="pinInput" type="password" inputmode="numeric" autocomplete="off" placeholder="Enter PIN"></label>
+    <label class="remember-pin"><input id="rememberPin" type="checkbox" checked> Remember on this device</label>
+    <button class="primary-button full-button" id="confirmSave" type="button">Save sentence</button>
+    <div class="parse-message" id="saveMessage" role="status" aria-live="polite"></div>
+  </dialog>
+
+  <iframe class="submission-frame" name="submissionFrame" title="Sentence submission response"></iframe>
 
   <template id="cardTemplate">
     <article class="sentence-card">
