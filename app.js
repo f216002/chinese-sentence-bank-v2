@@ -116,15 +116,15 @@ function submitSentence() {
   else { try { localStorage.removeItem('csbSubmissionPin'); } catch (_) {} }
 
   $('confirmSave').disabled = true;
-  $('saveMessage').textContent = 'Saving to Google Sheets…';
+  $('saveMessage').textContent = 'Opening Google confirmation…';
   const beforeIds = new Set(state.sentences.map(s => s.recordId));
   const fields = { action:'create', pin, content:state.preview.originalPaste, aiSource:state.preview.aiSource };
-  fetch(API_URL, {
-    method: 'POST',
-    mode: 'no-cors',
-    headers: {'Content-Type':'application/x-www-form-urlencoded;charset=UTF-8'},
-    body: new URLSearchParams(fields)
-  }).catch(() => {});
+  const form = document.createElement('form');
+  form.method = 'POST'; form.action = API_URL; form.target = '_blank'; form.hidden = true;
+  Object.entries(fields).forEach(([name,value]) => {
+    const input = document.createElement('input'); input.name = name; input.value = value; form.appendChild(input);
+  });
+  document.body.appendChild(form); form.submit(); form.remove();
 
   let checks = 0;
   const verify = setInterval(() => {
