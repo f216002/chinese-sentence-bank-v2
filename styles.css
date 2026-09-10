@@ -14,8 +14,8 @@
 @media(max-width:700px){.search-builder{grid-template-columns:1fr 64px}.keyword-field:nth-of-type(1),.keyword-field:nth-of-type(3),.keyword-field:nth-of-type(5){grid-column:1/2}.operator-field:nth-of-type(2),.operator-field:nth-of-type(4){grid-column:2/3}.topic-menu{width:100%}}
 
 /* Larger learning text inside sentence cards */
-.sentence-card .hindi{font-size:2.25rem!important;line-height:1.55;margin:25px 0 16px;overflow-wrap:anywhere}
-.sentence-card .pinyin{font-size:2.25rem!important;line-height:1.45;margin:12px 0 28px;overflow-wrap:anywhere}
+.sentence-card .hindi{font-size:1.5rem!important;line-height:1.55;margin:25px 0 16px;overflow-wrap:anywhere}
+.sentence-card .pinyin{font-size:1.5rem!important;line-height:1.45;margin:12px 0 28px;overflow-wrap:anywhere}
 
 /* Personal portrait replaces the decorative yellow hero circle. */
 .intro{position:relative;overflow:hidden;background:linear-gradient(135deg,#fffaf2 55%,#e7f2ed)}
@@ -23,4 +23,4 @@
 .hero-avatar{position:absolute;z-index:0;right:clamp(46px,8vw,150px);top:clamp(42px,7vw,88px);width:clamp(220px,22vw,360px);aspect-ratio:1;margin:0;padding:10px;border-radius:50%;background:var(--yellow);box-shadow:0 20px 55px rgba(124,91,15,.18)}
 .hero-avatar img{display:block;width:100%;height:100%;object-fit:cover;object-position:50% 42%;border-radius:50%;border:5px solid rgba(255,255,255,.88)}
 @media(max-width:1050px){.hero-avatar{width:190px;right:32px;top:38px}.intro h1{max-width:680px}.intro>p{max-width:620px}}
-@media(max-width:700px){.hero-avatar{position:relative;right:auto;top:auto;width:150px;margin:0 0 28px auto;padding:7px}.intro h1{font-size:clamp(44px,15vw,70px)}.sentence-card .hindi,.sentence-card .pinyin{font-size:1.9rem!important}}
+@media(max-width:700px){.hero-avatar{position:relative;right:auto;top:auto;width:150px;margin:0 0 28px auto;padding:7px}.intro h1{font-size:clamp(44px,15vw,70px)}.sentence-card .hindi,.sentence-card .pinyin{font-size:1.5rem!important}}
