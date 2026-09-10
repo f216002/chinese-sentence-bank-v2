@@ -1,0 +1,117 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="theme-color" content="#fffaf2">
+  <meta name="description" content="Build your personal Chinese sentence bank with Hindi explanations, pinyin, categories and Taiwanese Mandarin audio.">
+  <title>My Chinese Sentence Bank</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Noto+Sans+Devanagari:wght@400;500;600&family=Noto+Sans+TC:wght@400;500;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <header class="topbar">
+    <a class="brand" href="#top" aria-label="Chinese Sentence Bank home">
+      <span class="brand-mark" aria-hidden="true">句</span>
+      <span><strong id="bankName">My Chinese Sentence Bank</strong><small id="ownerName">A personal language notebook</small></span>
+    </a>
+    <button class="icon-button" id="helpButton" type="button" aria-label="Show paste format help">?</button>
+  </header>
+
+  <main id="top">
+    <section class="intro">
+      <div class="eyebrow">LEARN ONE USEFUL SENTENCE AT A TIME</div>
+      <h1>Your words.<br><em>Your Chinese.</em></h1>
+      <p>Paste a sentence prepared by ChatGPT or Gemini. We will organise the Hindi, Chinese, pinyin and explanation for you.</p>
+      <button class="primary-button" id="startButton" type="button">Add a new sentence <span aria-hidden="true">↓</span></button>
+      <div class="intro-stats" aria-label="Sentence bank summary">
+        <span><strong id="sentenceCount">—</strong> sentences</span>
+        <span><strong id="categoryCount">—</strong> categories</span>
+        <span class="live-status" id="apiStatus"><i></i> Connecting</span>
+      </div>
+    </section>
+
+    <section class="composer" id="addSentence" aria-labelledby="composerTitle">
+      <div class="section-heading">
+        <div><span class="step">01</span><h2 id="composerTitle">Paste from AI</h2></div>
+        <button class="text-button" id="sampleButton" type="button">Use sample</button>
+      </div>
+      <p class="section-note">Use the labels HINDI, CHINESE, PINYIN, EXPLANATION and CATEGORY. Long explanations are welcome.</p>
+      <label class="paste-box">
+        <span class="sr-only">Paste AI-generated sentence content</span>
+        <textarea id="pasteInput" rows="11" placeholder="HINDI:&#10;मुझे बैंक से पैसे निकालने हैं।&#10;&#10;CHINESE:&#10;我要去銀行領錢。&#10;&#10;PINYIN:&#10;Wǒ yào qù yínháng lǐng qián.&#10;&#10;EXPLANATION:&#10;...&#10;&#10;CATEGORY:&#10;Bank"></textarea>
+        <span class="paste-hint" id="pasteHint">Paste your AI answer here</span>
+      </label>
+      <div class="composer-actions">
+        <button class="secondary-button" id="clearButton" type="button">Clear</button>
+        <button class="primary-button" id="previewButton" type="button">Preview sentence</button>
+      </div>
+      <div class="parse-message" id="parseMessage" role="status" aria-live="polite"></div>
+    </section>
+
+    <section class="preview-panel hidden" id="previewPanel" aria-labelledby="previewTitle">
+      <div class="section-heading">
+        <div><span class="step">02</span><h2 id="previewTitle">Check before saving</h2></div>
+      </div>
+      <div id="previewCard"></div>
+      <div class="save-row">
+        <p>Your Google Sheet is protected. A submission PIN will be added in the next step.</p>
+        <button class="primary-button" id="saveButton" type="button" disabled>Save to my bank</button>
+      </div>
+    </section>
+
+    <section class="library" aria-labelledby="libraryTitle">
+      <div class="section-heading library-heading">
+        <div><span class="step">03</span><h2 id="libraryTitle">My sentence bank</h2></div>
+        <span class="result-count" id="resultCount"></span>
+      </div>
+      <div class="tools">
+        <label class="search-field"><span aria-hidden="true">⌕</span><span class="sr-only">Search sentences</span><input id="searchInput" type="search" placeholder="Search Hindi, Chinese or pinyin…"></label>
+        <label><span class="sr-only">Filter by category</span><select id="categoryFilter"><option value="">All categories</option></select></label>
+      </div>
+      <div class="sentence-grid" id="sentenceGrid" aria-live="polite">
+        <div class="loading-card">Loading your sentences…</div>
+      </div>
+      <div class="empty-state hidden" id="emptyState">
+        <span aria-hidden="true">空</span><h3>No matching sentences</h3><p>Try another keyword or category.</p>
+      </div>
+    </section>
+  </main>
+
+  <dialog id="helpDialog">
+    <button class="dialog-close" id="closeHelp" aria-label="Close help">×</button>
+    <span class="step">PASTE GUIDE</span>
+    <h2>Ask AI for this exact format</h2>
+    <p>Keeping these English labels allows the website to separate every part automatically.</p>
+    <pre>HINDI:
+[Hindi sentence]
+
+CHINESE:
+[Traditional Chinese sentence]
+
+PINYIN:
+[Pinyin with tone marks]
+
+EXPLANATION:
+[Hindi explanation; add pinyin after every Chinese word]
+
+CATEGORY:
+[One category]</pre>
+  </dialog>
+
+  <template id="cardTemplate">
+    <article class="sentence-card">
+      <div class="card-top"><span class="category-pill"></span><span class="record-id"></span></div>
+      <p class="hindi"></p>
+      <div class="chinese-row"><h3 class="chinese"></h3><button class="speak-button" type="button" aria-label="Play Taiwanese Mandarin pronunciation">▶</button></div>
+      <p class="pinyin"></p>
+      <details><summary>Hindi explanation <span>＋</span></summary><div class="explanation"></div></details>
+      <div class="tags"></div>
+    </article>
+  </template>
+
+  <script src="app.js"></script>
+</body>
+</html>
