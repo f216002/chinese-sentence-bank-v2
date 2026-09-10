@@ -107,13 +107,13 @@ function updateTopicPicker() {
   const all = $('topicAll');
   all.checked = total > 0 && selected === total;
   all.indeterminate = selected > 0 && selected < total;
-  $('topicSummary').textContent = selected === total ? 'All topics' : selected === 0 ? 'No topics' : `${selected} topics selected`;
+  $('topicSummary').textContent = selected === total ? 'All topics' : selected === 0 ? 'Any topic' : `${selected} topics selected`;
 }
 
 function renderSentences() {
   const visible = state.sentences.filter(s => {
     const haystack = normalizeSearchText([s.recordId,s.hindiSentence,s.chineseSentence,s.pinyin,s.hindiExplanation,s.category,s.tags].join(' '));
-    const topicMatch = [...sentenceTopics(s)].some(topic => state.selectedCategories.has(topic));
+    const topicMatch = state.selectedCategories.size === 0 || [...sentenceTopics(s)].some(topic => state.selectedCategories.has(topic));
     return matchesKeywordExpression(haystack) && topicMatch;
   });
   const grid = $('sentenceGrid'); grid.innerHTML = '';
