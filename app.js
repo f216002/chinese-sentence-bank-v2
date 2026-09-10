@@ -122,7 +122,8 @@ function submitSentence() {
   const form = document.createElement('form');
   form.method = 'POST'; form.action = API_URL; form.target = '_blank'; form.hidden = true;
   Object.entries(fields).forEach(([name,value]) => {
-    const input = document.createElement('input'); input.name = name; input.value = value; form.appendChild(input);
+    const field = name === 'content' ? document.createElement('textarea') : document.createElement('input');
+    field.name = name; field.value = value; form.appendChild(field);
   });
   document.body.appendChild(form); form.submit(); form.remove();
 
