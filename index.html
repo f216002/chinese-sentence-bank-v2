@@ -9,7 +9,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Noto+Sans+Devanagari:wght@400;500;600&family=Noto+Sans+TC:wght@400;500;700&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="styles.css?v=20260911-8">
+  <link rel="stylesheet" href="styles.css?v=20260911-9">
 </head>
 <body>
   <header class="topbar">
@@ -17,7 +17,10 @@
       <span class="brand-mark" aria-hidden="true">句</span>
       <span><strong id="bankName">My Chinese Sentence Bank</strong><small id="ownerName">A personal language notebook</small></span>
     </a>
-    <button class="icon-button" id="helpButton" type="button" aria-label="Show paste format help">?</button>
+    <div class="topbar-actions">
+      <button class="icon-button refresh-button" id="refreshButton" type="button" aria-label="Refresh sentence bank" title="Refresh">↻</button>
+      <button class="icon-button" id="helpButton" type="button" aria-label="Show paste format help" title="Help">?</button>
+    </div>
   </header>
 
   <main id="top">
@@ -46,7 +49,10 @@
           <span class="field-label">Hindi sentence</span>
           <textarea id="promptSentence" rows="3" placeholder="क्योंकि तुमने अभी देना नहीं सीखा।&#10;or: Kyonki tumne abhi dena nahin seekha."></textarea>
         </label>
-        <button class="primary-button generate-prompt-button" id="generatePrompt" type="button">Generate prompt</button>
+        <div class="prompt-generate-actions">
+          <button class="secondary-button" id="clearPrompt" type="button">Clear</button>
+          <button class="primary-button generate-prompt-button" id="generatePrompt" type="button">Generate prompt</button>
+        </div>
       </div>
       <div class="parse-message" id="promptMessage" role="status" aria-live="polite"></div>
       <div class="generated-prompt hidden" id="generatedPromptPanel">
@@ -54,7 +60,7 @@
           <div><span class="step">READY</span><h3>Your complete prompt</h3></div>
           <span id="promptCopyStatus" role="status" aria-live="polite"></span>
         </div>
-        <textarea id="generatedPrompt" rows="20" readonly aria-label="Complete AI prompt"></textarea>
+        <textarea id="generatedPrompt" rows="2" readonly aria-label="Complete AI prompt"></textarea>
         <div class="prompt-actions">
           <button class="secondary-button" id="copyGeneratedPrompt" type="button">Copy prompt</button>
           <button class="ai-launch-button chatgpt-button" id="openChatGPT" type="button">Copy &amp; open ChatGPT ↗</button>
@@ -72,7 +78,7 @@
       <p class="section-note">Use the labels HINDI, CHINESE, PINYIN, EXPLANATION and CATEGORY. Long explanations are welcome.</p>
       <label class="paste-box">
         <span class="sr-only">Paste AI-generated sentence content</span>
-        <textarea id="pasteInput" rows="11" placeholder="HINDI:&#10;मुझे बैंक से पैसे निकालने हैं।&#10;&#10;CHINESE:&#10;我要去銀行領錢。&#10;&#10;PINYIN:&#10;Wǒ yào qù yínháng lǐng qián.&#10;&#10;EXPLANATION:&#10;...&#10;&#10;CATEGORY:&#10;Bank"></textarea>
+        <textarea id="pasteInput" rows="2" placeholder="Paste the complete AI answer here…"></textarea>
         <span class="paste-hint" id="pasteHint">Paste your AI answer here</span>
       </label>
       <div class="composer-actions">
@@ -173,6 +179,6 @@ CATEGORY:
     </article>
   </template>
 
-  <script src="app.js?v=20260911-8"></script>
+  <script src="app.js?v=20260911-9"></script>
 </body>
 </html>
