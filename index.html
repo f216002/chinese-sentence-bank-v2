@@ -9,7 +9,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Noto+Sans+Devanagari:wght@400;500;600&family=Noto+Sans+TC:wght@400;500;700&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="styles.css?v=20260910-6">
+  <link rel="stylesheet" href="styles.css?v=20260911-7">
 </head>
 <body>
   <header class="topbar">
@@ -28,7 +28,7 @@
       <div class="eyebrow">LEARN ONE USEFUL SENTENCE AT A TIME</div>
       <h1>Your words.<br><em>Your Chinese.</em></h1>
       <p>Paste a sentence prepared by ChatGPT or Gemini. We will organise the Hindi, Chinese, pinyin and explanation for you.</p>
-      <button class="primary-button" id="startButton" type="button">Add a new sentence <span aria-hidden="true">↓</span></button>
+      <button class="primary-button" id="startButton" type="button">Create a new sentence <span aria-hidden="true">↓</span></button>
       <div class="intro-stats" aria-label="Sentence bank summary">
         <span><strong id="sentenceCount">—</strong> sentences</span>
         <span><strong id="categoryCount">—</strong> categories</span>
@@ -36,9 +36,37 @@
       </div>
     </section>
 
+    <section class="prompt-builder" id="createPrompt" aria-labelledby="promptBuilderTitle">
+      <div class="section-heading">
+        <div><span class="step">01</span><h2 id="promptBuilderTitle">Create your AI prompt</h2></div>
+      </div>
+      <p class="section-note">Type one Hindi or Romanized Hindi sentence. We will add it to the complete teaching prompt for you.</p>
+      <div class="prompt-input-row">
+        <label class="prompt-sentence-field">
+          <span class="field-label">Hindi sentence</span>
+          <textarea id="promptSentence" rows="3" placeholder="क्योंकि तुमने अभी देना नहीं सीखा।&#10;or: Kyonki tumne abhi dena nahin seekha."></textarea>
+        </label>
+        <button class="primary-button generate-prompt-button" id="generatePrompt" type="button">Generate prompt</button>
+      </div>
+      <div class="parse-message" id="promptMessage" role="status" aria-live="polite"></div>
+      <div class="generated-prompt hidden" id="generatedPromptPanel">
+        <div class="generated-prompt-heading">
+          <div><span class="step">READY</span><h3>Your complete prompt</h3></div>
+          <span id="promptCopyStatus" role="status" aria-live="polite"></span>
+        </div>
+        <textarea id="generatedPrompt" rows="20" readonly aria-label="Complete AI prompt"></textarea>
+        <div class="prompt-actions">
+          <button class="secondary-button" id="copyGeneratedPrompt" type="button">Copy prompt</button>
+          <button class="ai-launch-button chatgpt-button" id="openChatGPT" type="button">Copy &amp; open ChatGPT ↗</button>
+          <button class="ai-launch-button gemini-button" id="openGemini" type="button">Copy &amp; open Gemini ↗</button>
+        </div>
+        <p class="prompt-tip">In ChatGPT or Gemini, paste with <strong>Ctrl + V</strong>. On a phone, press and hold the message box, then choose <strong>Paste</strong>.</p>
+      </div>
+    </section>
+
     <section class="composer" id="addSentence" aria-labelledby="composerTitle">
       <div class="section-heading">
-        <div><span class="step">01</span><h2 id="composerTitle">Paste from AI</h2></div>
+        <div><span class="step">02</span><h2 id="composerTitle">Paste the AI answer</h2></div>
         <button class="text-button" id="sampleButton" type="button">Use sample</button>
       </div>
       <p class="section-note">Use the labels HINDI, CHINESE, PINYIN, EXPLANATION and CATEGORY. Long explanations are welcome.</p>
@@ -56,7 +84,7 @@
 
     <section class="preview-panel hidden" id="previewPanel" aria-labelledby="previewTitle">
       <div class="section-heading">
-        <div><span class="step">02</span><h2 id="previewTitle">Check before saving</h2></div>
+        <div><span class="step">03</span><h2 id="previewTitle">Check before saving</h2></div>
       </div>
       <div id="previewCard"></div>
       <div class="save-row">
@@ -67,7 +95,7 @@
 
     <section class="library" aria-labelledby="libraryTitle">
       <div class="section-heading library-heading">
-        <div><span class="step">03</span><h2 id="libraryTitle">My sentence bank</h2></div>
+        <div><span class="step">04</span><h2 id="libraryTitle">My sentence bank</h2></div>
         <span class="result-count" id="resultCount"></span>
       </div>
       <div class="tools">
@@ -145,6 +173,6 @@ CATEGORY:
     </article>
   </template>
 
-  <script src="app.js?v=20260910-6"></script>
+  <script src="app.js?v=20260911-7"></script>
 </body>
 </html>
