@@ -1,6 +1,34 @@
 const API_URL = 'https://script.google.com/macros/s/AKfycbw9trkW9RNCRSwWou_51Q-FP6aL7Lp8sy3zizSG83fzN1Urtd3ZiMc47RUfHDBTIMJfDw/exec';
 const SAMPLE = `HINDI:\nमुझे बैंक से पैसे निकालने हैं।\n\nCHINESE:\n我要去銀行領錢。\n\nPINYIN:\nWǒ yào qù yínháng lǐng qián.\n\nEXPLANATION:\n我要 (wǒ yào) का अर्थ है “मैं ... करना चाहता/चाहती हूँ।”\n去 (qù) का अर्थ “जाना” है।\n銀行 (yínháng) का अर्थ “बैंक” है।\n領錢 (lǐng qián) का अर्थ बैंक से पैसे निकालना है।\n中文語序 (Zhōngwén yǔxù): 主語 (zhǔyǔ) + 要 (yào) + 去 (qù) + 地點 (dìdiǎn) + 動作 (dòngzuò)。\n\nCATEGORY:\nBank`;
 const AI_PROMPT = `You are a Taiwanese Mandarin teacher for a Hindi-speaking beginner. Convert the Hindi sentence below into natural Traditional Chinese used in Taiwan.\n\nHINDI SENTENCE:\n[Paste one Hindi sentence here]\n\nReturn ONLY the following labelled sections. Do not add an introduction or conclusion. Keep every label exactly as written and do not add Markdown symbols such as ** around the labels.\n\nHINDI:\n[Repeat the original Hindi sentence]\n\nCHINESE:\n[One natural Traditional Chinese sentence used in Taiwan]\n\nPINYIN:\n[Hanyu Pinyin with tone marks for the complete Chinese sentence]\n\nEXPLANATION:\n[Explain every Chinese word and the grammar in clear Hindi. Whenever any Chinese character, word, phrase, or example appears, immediately add its pinyin in parentheses. Use Traditional Chinese only.]\n\nCATEGORY:\n[Choose exactly one: Daily Life, School, Home, Restaurant, Shopping, Bank, Hospital, Travel, Train & Bus, Airport, Work, Friends, Other]\n\nTAGS:\n[Three to five short English keywords separated by commas]\n\nAI SOURCE:\n[Write ChatGPT or Gemini]`;
+const AI_PROMPT_TEMPLATE = `Role: You are a professional Chinese teacher whose native language is Hindi. Your students are beginners learning Chinese from India. Please conduct all teaching and explanations throughout in a friendly, professional Hindi tone.
+
+Core Task: Translate the Hindi or Romanized Hindi sentence I provide into natural spoken Traditional Chinese as used in Taiwan, then break down and explain its vocabulary and grammatical structure in Hindi.
+
+Formatting and Output Guidelines: Return exactly the six section headers below in this order. Put every header on its own line exactly as written, without Markdown symbols such as ** or #.
+
+HINDI:
+Present the original Hindi sentence in full. If the input is Romanized Hindi, convert it into correct Devanagari Hindi.
+
+CHINESE:
+Provide an accurate, authentic Traditional Chinese translation using Traditional Chinese characters exclusively.
+
+PINYIN:
+Provide the complete Hanyu Pinyin with correct tone marks and punctuation.
+
+EXPLANATION:
+Use Hindi throughout to explain the complete meaning, each important word, useful phrases, measure words, word order and overall grammar in detail. Whenever a Chinese word, character, phrase or example is mentioned, include the Traditional Chinese, Pinyin and Hindi meaning together in this format: 漢字 (pīnyīn) - Hindi explanation. Never show Chinese in the explanation without pinyin.
+
+CATEGORY:
+Choose exactly one: Daily Life, School, Home, Restaurant, Shopping, Bank, Hospital, Travel, Train & Bus, Airport, Work, Friends, Other
+
+TAGS:
+Provide 3 to 6 short English search keywords separated by commas.
+
+Do not add an introduction, conclusion, note or any additional section.
+
+Sentence to be explained:
+{{STUDENT_SENTENCE}}`;
 
 const state = { sentences: [], categories: [], selectedCategories: new Set(), settings: {}, preview: null };
 const $ = (id) => document.getElementById(id);
@@ -22,6 +50,48 @@ function parsePaste(text) {
     category: found.CATEGORY || 'Other', tags: found.TAGS || '',
     aiSource: found['AI SOURCE'] || 'ChatGPT / Gemini', originalPaste: text
   };
+}
+
+function buildPrompt() {
+  const sentence = $('promptSentence').value.trim();
+  if (!sentence) {
+    $('promptMessage').textContent = 'Type one Hindi or Romanized Hindi sentence first.';
+    $('promptSentence').focus();
+    return '';
+  }
+  const prompt = AI_PROMPT_TEMPLATE.replace('{{STUDENT_SENTENCE}}', sentence);
+  $('generatedPrompt').value = prompt;
+  $('generatedPromptPanel').classList.remove('hidden');
+  $('promptMessage').textContent = '';
+  $('promptCopyStatus').textContent = '';
+  $('generatedPromptPanel').scrollIntoView({behavior:'smooth', block:'nearest'});
+  return prompt;
+}
+
+async function copyPromptText() {
+  const prompt = $('generatedPrompt').value || buildPrompt();
+  if (!prompt) return false;
+  try {
+    await navigator.clipboard.writeText(prompt);
+  } catch (_) {
+    $('generatedPrompt').focus();
+    $('generatedPrompt').select();
+    if (!document.execCommand('copy')) {
+      $('promptCopyStatus').textContent = 'Select the prompt and copy it manually.';
+      return false;
+    }
+  }
+  $('promptCopyStatus').textContent = 'Prompt copied!';
+  setTimeout(() => { $('promptCopyStatus').textContent = ''; }, 1800);
+  return true;
+}
+
+function copyAndOpen(url) {
+  const prompt = $('generatedPrompt').value || buildPrompt();
+  if (!prompt) return;
+  const newPage = window.open(url, '_blank', 'noopener,noreferrer');
+  copyPromptText();
+  if (!newPage) $('promptCopyStatus').textContent = 'Prompt copied. Please allow pop-ups, then open the AI website.';
 }
 
 function createCard(sentence, preview = false) {
@@ -218,7 +288,14 @@ function loadBank() {
   setTimeout(() => { if (!window.__sentenceBankLoaded) showApiError('Google Sheets took too long to respond.'); }, 12000);
 }
 
-$('startButton').addEventListener('click', () => $('addSentence').scrollIntoView({behavior:'smooth'}));
+$('startButton').addEventListener('click', () => $('createPrompt').scrollIntoView({behavior:'smooth'}));
+$('generatePrompt').addEventListener('click', buildPrompt);
+$('promptSentence').addEventListener('keydown', event => {
+  if ((event.ctrlKey || event.metaKey) && event.key === 'Enter') buildPrompt();
+});
+$('copyGeneratedPrompt').addEventListener('click', copyPromptText);
+$('openChatGPT').addEventListener('click', () => copyAndOpen('https://chatgpt.com/'));
+$('openGemini').addEventListener('click', () => copyAndOpen('https://gemini.google.com/app'));
 $('sampleButton').addEventListener('click', () => { $('pasteInput').value = SAMPLE; $('pasteInput').focus(); });
 $('clearButton').addEventListener('click', () => { $('pasteInput').value = ''; $('parseMessage').textContent = ''; $('previewPanel').classList.add('hidden'); });
 $('previewButton').addEventListener('click', handlePreview);
@@ -249,7 +326,7 @@ document.addEventListener('keydown', event => {
 });
 $('helpButton').addEventListener('click', () => $('helpDialog').showModal());
 $('copyPrompt').addEventListener('click', async () => {
-  await navigator.clipboard.writeText(AI_PROMPT);
+  await navigator.clipboard.writeText(AI_PROMPT_TEMPLATE.replace('{{STUDENT_SENTENCE}}', '[Paste one Hindi or Romanized Hindi sentence here]'));
   const button = $('copyPrompt'); button.textContent = 'Copied!';
   setTimeout(() => { button.textContent = 'Copy AI prompt'; }, 1400);
 });
