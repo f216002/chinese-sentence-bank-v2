@@ -314,7 +314,20 @@ function loadBank() {
 }
 
 $('startButton').addEventListener('click', () => $('createPrompt').scrollIntoView({behavior:'smooth'}));
+$('refreshButton').addEventListener('click', () => {
+  $('refreshButton').disabled = true;
+  $('refreshButton').textContent = '…';
+  window.location.reload();
+});
 $('generatePrompt').addEventListener('click', buildPrompt);
+$('clearPrompt').addEventListener('click', () => {
+  $('promptSentence').value = '';
+  $('generatedPrompt').value = '';
+  $('generatedPromptPanel').classList.add('hidden');
+  $('promptMessage').textContent = '';
+  $('promptCopyStatus').textContent = '';
+  $('promptSentence').focus();
+});
 $('promptSentence').addEventListener('keydown', event => {
   if ((event.ctrlKey || event.metaKey) && event.key === 'Enter') buildPrompt();
 });
