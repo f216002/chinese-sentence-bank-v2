@@ -68,6 +68,22 @@ function buildPrompt() {
   return prompt;
 }
 
+function decodeMobileClipboardText(text) {
+  let value = String(text || '').trim();
+  for (let pass = 0; pass < 3; pass += 1) {
+    const encodedBytes = value.match(/%[0-9a-f]{2}/gi) || [];
+    if (encodedBytes.length < 3) break;
+    try {
+      const decoded = decodeURIComponent(value.replace(/\+/g, '%20'));
+      if (decoded === value) break;
+      value = decoded;
+    } catch (_) {
+      break;
+    }
+  }
+  return value;
+}
+
 async function copyPromptText() {
   const prompt = $('generatedPrompt').value || buildPrompt();
   if (!prompt) return false;
@@ -89,6 +105,13 @@ async function copyPromptText() {
 function copyAndOpen(url) {
   const prompt = $('generatedPrompt').value || buildPrompt();
   if (!prompt) return;
+  const isMobile = window.matchMedia('(pointer: coarse)').matches || /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
+  if (isMobile) {
+    copyPromptText().then(copied => {
+      if (copied) window.location.assign(url);
+    });
+    return;
+  }
   const newPage = window.open(url, '_blank', 'noopener,noreferrer');
   copyPromptText();
   if (!newPage) $('promptCopyStatus').textContent = 'Prompt copied. Please allow pop-ups, then open the AI website.';
@@ -193,8 +216,10 @@ function renderSentences() {
 }
 
 function handlePreview() {
-  const text = $('pasteInput').value.trim();
+  const pastedText = $('pasteInput').value.trim();
+  const text = decodeMobileClipboardText(pastedText);
   if (!text) { $('parseMessage').textContent = 'Paste an AI answer first.'; return; }
+  if (text !== pastedText) $('pasteInput').value = text;
   const parsed = parsePaste(text);
   const missing = [['Hindi',parsed.hindiSentence],['Chinese',parsed.chineseSentence],['Pinyin',parsed.pinyin],['Explanation',parsed.hindiExplanation]].filter(([,v]) => !v).map(([k]) => k);
   if (missing.length) { $('parseMessage').textContent = `Please add these labelled parts: ${missing.join(', ')}.`; return; }
@@ -297,6 +322,16 @@ $('copyGeneratedPrompt').addEventListener('click', copyPromptText);
 $('openChatGPT').addEventListener('click', () => copyAndOpen('https://chatgpt.com/'));
 $('openGemini').addEventListener('click', () => copyAndOpen('https://gemini.google.com/app'));
 $('sampleButton').addEventListener('click', () => { $('pasteInput').value = SAMPLE; $('pasteInput').focus(); });
+$('pasteInput').addEventListener('paste', () => {
+  setTimeout(() => {
+    const pastedText = $('pasteInput').value;
+    const decoded = decodeMobileClipboardText(pastedText);
+    if (decoded !== pastedText.trim()) {
+      $('pasteInput').value = decoded;
+      $('parseMessage').textContent = 'Mobile encoded text was decoded automatically. You can preview it now.';
+    }
+  }, 0);
+});
 $('clearButton').addEventListener('click', () => { $('pasteInput').value = ''; $('parseMessage').textContent = ''; $('previewPanel').classList.add('hidden'); });
 $('previewButton').addEventListener('click', handlePreview);
 ['keywordA','keywordB','keywordC'].forEach(id => $(id).addEventListener('input', renderSentences));
