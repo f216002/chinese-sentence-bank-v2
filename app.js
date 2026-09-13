@@ -36,6 +36,7 @@ Sentence to be explained:
 const state = { sentences: [], categories: [], selectedCategories: new Set(), settings: {}, preview: null };
 const $ = (id) => document.getElementById(id);
 const sentenceModelAudio = new Audio();
+const teacherAudioCache = new Map();
 const cardRecordings = new Map();
 let activeCardRecorder = null;
 let activeCardStream = null;
@@ -132,24 +133,77 @@ function romanHindiFor(sentence) {
   return parsePaste(sentence.originalPaste).romanHindi;
 }
 
+function setModelAudioStatus(button, message) {
+  const card = button.closest('.sentence-card');
+  const status = card && card.querySelector('.card-recording-status');
+  if (status) status.textContent = message;
+}
+
+function playTeacherAudioUrl(audioUrl, button) {
+  sentenceModelAudio.pause();
+  sentenceModelAudio.currentTime = 0;
+  sentenceModelAudio.src = audioUrl;
+  button.classList.add('speaking');
+  setModelAudioStatus(button, 'Playing the teacher recording…');
+  sentenceModelAudio.onended = () => {
+    button.classList.remove('speaking');
+    setModelAudioStatus(button, 'Teacher recording finished.');
+  };
+  sentenceModelAudio.onerror = () => {
+    button.classList.remove('speaking');
+    setModelAudioStatus(button, 'The teacher recording could not be played.');
+  };
+  sentenceModelAudio.play().catch(() => {
+    button.classList.remove('speaking');
+    setModelAudioStatus(button, 'Tap the play button again to hear the teacher recording.');
+  });
+}
+
 function playSentenceModel(sentence, button) {
   if (!sentence.standardAudioUrl) {
     speakChinese(sentence.chineseSentence, button);
     return;
   }
-  sentenceModelAudio.pause();
-  sentenceModelAudio.currentTime = 0;
-  sentenceModelAudio.src = sentence.standardAudioUrl;
-  button.classList.add('speaking');
-  sentenceModelAudio.onended = () => button.classList.remove('speaking');
-  sentenceModelAudio.onerror = () => {
-    button.classList.remove('speaking');
-    speakChinese(sentence.chineseSentence, button);
+
+  const cachedUrl = teacherAudioCache.get(sentence.recordId);
+  if (cachedUrl) {
+    playTeacherAudioUrl(cachedUrl, button);
+    return;
+  }
+
+  button.disabled = true;
+  setModelAudioStatus(button, 'Loading the teacher recording…');
+  const callback = `receiveTeacherAudio${Date.now()}${Math.random().toString(36).slice(2, 8)}`;
+  const script = document.createElement('script');
+  const cleanup = () => {
+    delete window[callback];
+    script.remove();
+    button.disabled = false;
   };
-  sentenceModelAudio.play().catch(() => {
-    button.classList.remove('speaking');
-    speakChinese(sentence.chineseSentence, button);
-  });
+
+  window[callback] = data => {
+    cleanup();
+    if (!data || !data.success || !data.audioBase64) {
+      setModelAudioStatus(button, `Teacher recording unavailable: ${(data && data.message) || 'unknown error'}`);
+      return;
+    }
+    try {
+      const binary = atob(data.audioBase64);
+      const bytes = new Uint8Array(binary.length);
+      for (let index = 0; index < binary.length; index += 1) bytes[index] = binary.charCodeAt(index);
+      const audioUrl = URL.createObjectURL(new Blob([bytes], {type:data.mimeType || 'audio/webm'}));
+      teacherAudioCache.set(sentence.recordId, audioUrl);
+      playTeacherAudioUrl(audioUrl, button);
+    } catch (_) {
+      setModelAudioStatus(button, 'The teacher recording was received but could not be decoded.');
+    }
+  };
+  script.onerror = () => {
+    cleanup();
+    setModelAudioStatus(button, 'Could not load the teacher recording. Please check the newest Apps Script deployment.');
+  };
+  script.src = `${API_URL}?action=audio&recordId=${encodeURIComponent(sentence.recordId)}&callback=${callback}&_=${Date.now()}`;
+  document.body.appendChild(script);
 }
 
 async function toggleCardRecording(node, sentence, preview) {
