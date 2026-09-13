@@ -200,6 +200,8 @@ let recorder = null;
 let recordedChunks = [];
 let recordedUrl = '';
 let quizIndex = 0;
+const standardToneAudio = new Audio();
+let activeToneButton = null;
 
 function speakLabText(text, button) {
   const original = button && button.textContent;
@@ -209,6 +211,31 @@ function speakLabText(text, button) {
     setTimeout(() => { button.textContent = original; }, 1200);
   }
 }
+
+function resetToneAudioButton() {
+  if (!activeToneButton) return;
+  activeToneButton.textContent = activeToneButton.dataset.label;
+  activeToneButton.classList.remove('playing');
+  activeToneButton = null;
+}
+
+function playStandardTone(src, button, fallbackText) {
+  standardToneAudio.pause();
+  standardToneAudio.currentTime = 0;
+  resetToneAudioButton();
+  if (!button.dataset.label) button.dataset.label = button.textContent;
+  activeToneButton = button;
+  button.textContent = '♪ Playing';
+  button.classList.add('playing');
+  standardToneAudio.src = src;
+  standardToneAudio.play().catch(() => {
+    resetToneAudioButton();
+    speakLabText(fallbackText, button);
+  });
+}
+
+standardToneAudio.addEventListener('ended', resetToneAudioButton);
+standardToneAudio.addEventListener('error', resetToneAudioButton);
 
 function showLabPanel(panel) {
   const tone = panel === 'tone';
@@ -321,9 +348,9 @@ function initPronunciationLab() {
   if (!$('pronunciationLab')) return;
   $('toneTab').addEventListener('click',()=>showLabPanel('tone'));
   $('homophoneTab').addEventListener('click',()=>showLabPanel('homophone'));
-  document.querySelectorAll('.tone-card').forEach(card=>card.querySelector('.tone-listen').addEventListener('click',e=>speakLabText(card.dataset.text,e.currentTarget)));
+  document.querySelectorAll('.tone-card').forEach(card=>card.querySelectorAll('.tone-audio').forEach(button=>button.addEventListener('click',()=>playStandardTone(button.dataset.audio,button,card.dataset.text))));
   $('practiceTone').addEventListener('change',()=>drawPitch(toneModels[$('practiceTone').value].curve));
-  $('hearPracticeTone').addEventListener('click',e=>speakLabText(toneModels[$('practiceTone').value].text,e.currentTarget));
+  $('hearPracticeTone').addEventListener('click',e=>{const tone=$('practiceTone').value;playStandardTone(`audio/tones/ma-tone-${tone}-once.mp3`,e.currentTarget,toneModels[tone].text);});
   $('recordTone').addEventListener('click',toggleRecording);
   $('playRecording').addEventListener('click',()=>$('recordedAudio').play());
   document.querySelectorAll('.sound-chip').forEach(chip=>chip.addEventListener('click',()=>{document.querySelectorAll('.sound-chip').forEach(c=>c.classList.remove('active'));chip.classList.add('active');renderHomophones(chip.dataset.sound);}));
