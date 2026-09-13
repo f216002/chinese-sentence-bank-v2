@@ -15,7 +15,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Noto+Sans+Devanagari:wght@400;500;600&family=Noto+Sans+TC:wght@400;500;700&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="styles.css?v=20260913-2">
+  <link rel="stylesheet" href="styles.css?v=20260914-1">
 </head>
 <body>
   <header class="topbar">
@@ -118,11 +118,11 @@
       <div class="section-heading">
         <div><span class="step">01</span><h2 id="promptBuilderTitle">Create your AI prompt</h2></div>
       </div>
-      <p class="section-note">Type one Hindi or Romanized Hindi sentence. We will add it to the complete teaching prompt for you.</p>
+      <p class="section-note">Type one Hindi, Romanized Hindi, or Chinese sentence. The AI will translate in either direction and include Roman Hindi.</p>
       <div class="prompt-input-row">
         <label class="prompt-sentence-field">
-          <span class="field-label">Hindi sentence</span>
-          <textarea id="promptSentence" rows="3" placeholder="क्योंकि तुमने अभी देना नहीं सीखा।&#10;or: Kyonki tumne abhi dena nahin seekha."></textarea>
+          <span class="field-label">Hindi, Roman Hindi, or Chinese sentence</span>
+          <textarea id="promptSentence" rows="3" placeholder="क्योंकि तुमने अभी देना नहीं सीखा।&#10;Kyonki tumne abhi dena nahin seekha.&#10;or: 因為你還沒學會給予。"></textarea>
         </label>
         <div class="prompt-generate-actions">
           <button class="secondary-button" id="clearPrompt" type="button">Clear</button>
@@ -150,7 +150,7 @@
         <div><span class="step">02</span><h2 id="composerTitle">Paste the AI answer</h2></div>
         <button class="text-button" id="sampleButton" type="button">Use sample</button>
       </div>
-      <p class="section-note">Use the labels HINDI, CHINESE, PINYIN, EXPLANATION and CATEGORY. Long explanations are welcome.</p>
+      <p class="section-note">Use the labels HINDI, CHINESE, PINYIN, ROMAN, EXPLANATION and CATEGORY. Long explanations are welcome.</p>
       <label class="paste-box">
         <span class="sr-only">Paste AI-generated sentence content</span>
         <textarea id="pasteInput" rows="2" placeholder="Paste the complete AI answer here…"></textarea>
@@ -223,6 +223,9 @@ CHINESE:
 PINYIN:
 [Pinyin with tone marks]
 
+ROMAN:
+[Romanized Hindi in Latin script]
+
 EXPLANATION:
 [Hindi explanation; add pinyin after every Chinese word]
 
@@ -241,19 +244,36 @@ CATEGORY:
     <div class="parse-message" id="saveMessage" role="status" aria-live="polite"></div>
   </dialog>
 
+  <dialog id="audioPinDialog">
+    <button class="dialog-close" id="closeAudioPin" aria-label="Close teacher recording window">×</button>
+    <span class="step">TEACHER AUDIO</span>
+    <h2>Save as the model voice</h2>
+    <p>Only the teacher should save a recording for all students. Enter the private submission PIN.</p>
+    <label class="pin-field">Teacher PIN<input id="audioPinInput" type="password" inputmode="numeric" autocomplete="off" placeholder="Enter PIN"></label>
+    <button class="primary-button full-button" id="confirmAudioSave" type="button">Save teacher recording</button>
+    <div class="parse-message" id="audioSaveMessage" role="status" aria-live="polite"></div>
+  </dialog>
+
   <iframe class="submission-frame" id="submissionFrame" name="submissionFrame" title="Sentence submission response"></iframe>
 
   <template id="cardTemplate">
     <article class="sentence-card">
       <div class="card-top"><span class="category-pill"></span><span class="record-id"></span></div>
       <p class="hindi"></p>
+      <p class="roman-hindi"></p>
       <div class="chinese-row"><h3 class="chinese"></h3><button class="speak-button" type="button" aria-label="Play Taiwanese Mandarin pronunciation">▶</button></div>
       <p class="pinyin"></p>
+      <div class="sentence-audio-practice" aria-label="Pronunciation practice">
+        <button class="card-record-button" type="button">● Record my voice</button>
+        <button class="card-play-button" type="button" disabled>▶ Play my voice</button>
+        <button class="card-save-model-button" type="button" disabled>Save as model</button>
+        <span class="card-recording-status" role="status" aria-live="polite"></span>
+      </div>
       <details><summary>Hindi explanation <span>＋</span></summary><div class="explanation"></div></details>
       <div class="tags"></div>
     </article>
   </template>
 
-  <script src="app.js?v=20260913-2"></script>
+  <script src="app.js?v=20260914-1"></script>
 </body>
 </html>

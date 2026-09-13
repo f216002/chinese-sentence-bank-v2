@@ -1,11 +1,11 @@
 const API_URL = 'https://script.google.com/macros/s/AKfycbw9trkW9RNCRSwWou_51Q-FP6aL7Lp8sy3zizSG83fzN1Urtd3ZiMc47RUfHDBTIMJfDw/exec';
-const SAMPLE = `HINDI:\nमुझे बैंक से पैसे निकालने हैं।\n\nCHINESE:\n我要去銀行領錢。\n\nPINYIN:\nWǒ yào qù yínháng lǐng qián.\n\nEXPLANATION:\n我要 (wǒ yào) का अर्थ है “मैं ... करना चाहता/चाहती हूँ।”\n去 (qù) का अर्थ “जाना” है।\n銀行 (yínháng) का अर्थ “बैंक” है।\n領錢 (lǐng qián) का अर्थ बैंक से पैसे निकालना है।\n中文語序 (Zhōngwén yǔxù): 主語 (zhǔyǔ) + 要 (yào) + 去 (qù) + 地點 (dìdiǎn) + 動作 (dòngzuò)。\n\nCATEGORY:\nBank`;
+const SAMPLE = `HINDI:\nमुझे बैंक से पैसे निकालने हैं।\n\nCHINESE:\n我要去銀行領錢。\n\nPINYIN:\nWǒ yào qù yínháng lǐng qián.\n\nROMAN:\nMujhe bank se paise nikaalne hain.\n\nEXPLANATION:\n我要 (wǒ yào) का अर्थ है “मैं ... करना चाहता/चाहती हूँ।”\n去 (qù) का अर्थ “जाना” है।\n銀行 (yínháng) का अर्थ “बैंक” है।\n領錢 (lǐng qián) का अर्थ बैंक से पैसे निकालना है।\n中文語序 (Zhōngwén yǔxù): 主語 (zhǔyǔ) + 要 (yào) + 去 (qù) + 地點 (dìdiǎn) + 動作 (dòngzuò)。\n\nCATEGORY:\nBank`;
 const AI_PROMPT = `You are a Taiwanese Mandarin teacher for a Hindi-speaking beginner. Convert the Hindi sentence below into natural Traditional Chinese used in Taiwan.\n\nHINDI SENTENCE:\n[Paste one Hindi sentence here]\n\nReturn ONLY the following labelled sections. Do not add an introduction or conclusion. Keep every label exactly as written and do not add Markdown symbols such as ** around the labels.\n\nHINDI:\n[Repeat the original Hindi sentence]\n\nCHINESE:\n[One natural Traditional Chinese sentence used in Taiwan]\n\nPINYIN:\n[Hanyu Pinyin with tone marks for the complete Chinese sentence]\n\nEXPLANATION:\n[Explain every Chinese word and the grammar in clear Hindi. Whenever any Chinese character, word, phrase, or example appears, immediately add its pinyin in parentheses. Use Traditional Chinese only.]\n\nCATEGORY:\n[Choose exactly one: Daily Life, School, Home, Restaurant, Shopping, Bank, Hospital, Travel, Train & Bus, Airport, Work, Friends, Other]\n\nTAGS:\n[Three to five short English keywords separated by commas]\n\nAI SOURCE:\n[Write ChatGPT or Gemini]`;
-const AI_PROMPT_TEMPLATE = `Role: You are a professional Chinese teacher whose native language is Hindi. Your students are beginners learning Chinese from India. Please conduct all teaching and explanations throughout in a friendly, professional Hindi tone.
+const AI_PROMPT_TEMPLATE = `Role Persona: You are a professional Chinese language teacher whose native language is Hindi. Your students are beginners from India learning Chinese. Conduct all teaching, guidance, and explanations in warm, friendly, and professional Hindi throughout.
 
-Core Task: Translate the Hindi or Romanized Hindi sentence I provide into natural spoken Traditional Chinese as used in Taiwan, then break down and explain its vocabulary and grammatical structure in Hindi.
+Core Task: If I provide Hindi or Romanized Hindi, translate it into natural spoken Traditional Chinese as used in Taiwan. If I provide Chinese, translate it into natural Hindi. Then explain its vocabulary and grammatical structure entirely in Hindi.
 
-Formatting and Output Guidelines: Return exactly the six section headers below in this order. Put every header on its own line exactly as written, without Markdown symbols such as ** or #.
+Formatting and Output Guidelines: Return exactly the seven section headers below in this order. Put every header on its own line exactly as written, without Markdown symbols such as ** or #. Do not omit any section.
 
 HINDI:
 Present the original Hindi sentence in full. If the input is Romanized Hindi, convert it into correct Devanagari Hindi.
@@ -15,6 +15,9 @@ Provide an accurate, authentic Traditional Chinese translation using Traditional
 
 PINYIN:
 Provide the complete Hanyu Pinyin with correct tone marks and punctuation.
+
+ROMAN:
+Provide the complete Romanized transliteration in Latin script for the Hindi sentence.
 
 EXPLANATION:
 Use Hindi throughout to explain the complete meaning, each important word, useful phrases, measure words, word order and overall grammar in detail. Whenever a Chinese word, character, phrase or example is mentioned, include the Traditional Chinese, Pinyin and Hindi meaning together in this format: 漢字 (pīnyīn) - Hindi explanation. Never show Chinese in the explanation without pinyin.
@@ -32,9 +35,15 @@ Sentence to be explained:
 
 const state = { sentences: [], categories: [], selectedCategories: new Set(), settings: {}, preview: null };
 const $ = (id) => document.getElementById(id);
+const sentenceModelAudio = new Audio();
+const cardRecordings = new Map();
+let activeCardRecorder = null;
+let activeCardStream = null;
+let activeCardButton = null;
+let pendingModelSave = null;
 
 function parsePaste(text) {
-  const labels = ['HINDI', 'CHINESE', 'PINYIN', 'EXPLANATION', 'CATEGORY', 'TAGS', 'AI SOURCE'];
+  const labels = ['HINDI', 'CHINESE', 'PINYIN', 'ROMAN', 'EXPLANATION', 'CATEGORY', 'TAGS', 'AI SOURCE'];
   const found = {};
   const pattern = new RegExp(`(?:^|\\n)\\s*(?:\\*\\*)?\\s*(${labels.join('|')})\\s*:?\\s*(?:\\*\\*)?\\s*:?\\s*`, 'gi');
   const matches = [...text.matchAll(pattern)];
@@ -46,7 +55,7 @@ function parsePaste(text) {
   });
   return {
     hindiSentence: found.HINDI || '', chineseSentence: found.CHINESE || '',
-    pinyin: found.PINYIN || '', hindiExplanation: found.EXPLANATION || '',
+    pinyin: found.PINYIN || '', romanHindi: found.ROMAN || '', hindiExplanation: found.EXPLANATION || '',
     category: found.CATEGORY || 'Other', tags: found.TAGS || '',
     aiSource: found['AI SOURCE'] || 'ChatGPT / Gemini', originalPaste: text
   };
@@ -55,7 +64,7 @@ function parsePaste(text) {
 function buildPrompt() {
   const sentence = $('promptSentence').value.trim();
   if (!sentence) {
-    $('promptMessage').textContent = 'Type one Hindi or Romanized Hindi sentence first.';
+    $('promptMessage').textContent = 'Type one Hindi, Romanized Hindi, or Chinese sentence first.';
     $('promptSentence').focus();
     return '';
   }
@@ -117,11 +126,172 @@ function copyAndOpen(url) {
   if (!newPage) $('promptCopyStatus').textContent = 'Prompt copied. Please allow pop-ups, then open the AI website.';
 }
 
+function romanHindiFor(sentence) {
+  if (sentence.romanHindi) return sentence.romanHindi;
+  if (!sentence.originalPaste) return '';
+  return parsePaste(sentence.originalPaste).romanHindi;
+}
+
+function playSentenceModel(sentence, button) {
+  if (!sentence.standardAudioUrl) {
+    speakChinese(sentence.chineseSentence, button);
+    return;
+  }
+  sentenceModelAudio.pause();
+  sentenceModelAudio.currentTime = 0;
+  sentenceModelAudio.src = sentence.standardAudioUrl;
+  button.classList.add('speaking');
+  sentenceModelAudio.onended = () => button.classList.remove('speaking');
+  sentenceModelAudio.onerror = () => {
+    button.classList.remove('speaking');
+    speakChinese(sentence.chineseSentence, button);
+  };
+  sentenceModelAudio.play().catch(() => {
+    button.classList.remove('speaking');
+    speakChinese(sentence.chineseSentence, button);
+  });
+}
+
+async function toggleCardRecording(node, sentence, preview) {
+  const recordButton = node.querySelector('.card-record-button');
+  const playButton = node.querySelector('.card-play-button');
+  const saveButton = node.querySelector('.card-save-model-button');
+  const status = node.querySelector('.card-recording-status');
+
+  if (activeCardRecorder && activeCardRecorder.state === 'recording') {
+    if (activeCardButton !== recordButton) {
+      status.textContent = 'Another card is recording. Stop it first.';
+      return;
+    }
+    activeCardRecorder.stop();
+    return;
+  }
+
+  if (!navigator.mediaDevices || !window.MediaRecorder) {
+    status.textContent = 'Recording is not supported here. Try Chrome, Edge, or Safari.';
+    return;
+  }
+
+  try {
+    const stream = await navigator.mediaDevices.getUserMedia({audio:true});
+    const chunks = [];
+    const recorder = new MediaRecorder(stream);
+    activeCardRecorder = recorder;
+    activeCardStream = stream;
+    activeCardButton = recordButton;
+    recorder.ondataavailable = event => { if (event.data.size) chunks.push(event.data); };
+    recorder.onstop = () => {
+      stream.getTracks().forEach(track => track.stop());
+      const blob = new Blob(chunks, {type:recorder.mimeType || 'audio/webm'});
+      const key = sentence.recordId || `preview-${sentence.chineseSentence}`;
+      const previous = cardRecordings.get(key);
+      if (previous && previous.url) URL.revokeObjectURL(previous.url);
+      const recording = {blob, url:URL.createObjectURL(blob), mimeType:blob.type || 'audio/webm'};
+      cardRecordings.set(key, recording);
+      playButton.disabled = false;
+      saveButton.disabled = preview || !sentence.recordId;
+      recordButton.classList.remove('recording');
+      recordButton.textContent = '● Record again';
+      status.textContent = preview ? 'Recording ready. Save the sentence before saving a model voice.' : 'Recording ready. Listen and compare.';
+      activeCardRecorder = null;
+      activeCardStream = null;
+      activeCardButton = null;
+    };
+    recorder.start();
+    recordButton.classList.add('recording');
+    recordButton.textContent = '■ Stop recording';
+    status.textContent = 'Recording… Read the complete Chinese sentence.';
+    setTimeout(() => {
+      if (activeCardRecorder === recorder && recorder.state === 'recording') recorder.stop();
+    }, 30000);
+  } catch (_) {
+    status.textContent = 'Microphone permission was not allowed.';
+  }
+}
+
+function recordingForSentence(sentence) {
+  return cardRecordings.get(sentence.recordId || `preview-${sentence.chineseSentence}`);
+}
+
+function openAudioPinDialog(sentence, node) {
+  const recording = recordingForSentence(sentence);
+  if (!recording || !sentence.recordId) return;
+  pendingModelSave = {sentence, node, recording};
+  try { $('audioPinInput').value = localStorage.getItem('csbSubmissionPin') || ''; } catch (_) {}
+  $('audioSaveMessage').textContent = '';
+  $('audioPinDialog').showModal();
+  setTimeout(() => $('audioPinInput').focus(), 50);
+}
+
+function blobToBase64(blob) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(String(reader.result || '').split(',')[1] || '');
+    reader.onerror = reject;
+    reader.readAsDataURL(blob);
+  });
+}
+
+async function submitTeacherAudio() {
+  const pin = $('audioPinInput').value.trim();
+  if (!pin) { $('audioSaveMessage').textContent = 'Enter the teacher PIN.'; return; }
+  if (!pendingModelSave) { $('audioPinDialog').close(); return; }
+  const {sentence, recording} = pendingModelSave;
+  const button = $('confirmAudioSave');
+  button.disabled = true;
+  $('audioSaveMessage').textContent = 'Uploading the teacher recording…';
+
+  try {
+    const audioData = await blobToBase64(recording.blob);
+    const form = document.createElement('form');
+    form.method = 'POST'; form.action = API_URL; form.target = 'submissionFrame'; form.hidden = true;
+    const fields = {action:'saveAudio', pin, recordId:sentence.recordId, mimeType:recording.mimeType, audioData};
+    Object.entries(fields).forEach(([name,value]) => {
+      const field = name === 'audioData' ? document.createElement('textarea') : document.createElement('input');
+      field.name = name; field.value = value; form.appendChild(field);
+    });
+    document.body.appendChild(form); form.submit(); form.remove();
+    try { localStorage.setItem('csbSubmissionPin', pin); } catch (_) {}
+
+    let checks = 0;
+    const previousUrl = sentence.standardAudioUrl || '';
+    const verify = setInterval(() => {
+      checks += 1;
+      const callback = `verifyAudio${Date.now()}`;
+      const script = document.createElement('script');
+      window[callback] = data => {
+        delete window[callback]; script.remove();
+        const rows = data && data.success ? data.sentences || [] : [];
+        const updated = rows.find(row => row.recordId === sentence.recordId && row.standardAudioUrl && row.standardAudioUrl !== previousUrl);
+        if (updated) {
+          clearInterval(verify);
+          state.sentences = rows;
+          renderSentences();
+          $('audioSaveMessage').textContent = 'Teacher recording saved!';
+          button.disabled = false;
+          setTimeout(() => $('audioPinDialog').close(), 900);
+        } else if (checks >= 12) {
+          clearInterval(verify);
+          button.disabled = false;
+          $('audioSaveMessage').textContent = 'Upload was sent, but confirmation is taking longer. Refresh before trying again.';
+        }
+      };
+      script.src = `${API_URL}?action=list&callback=${callback}&_=${Date.now()}`;
+      document.body.appendChild(script);
+    }, 1800);
+  } catch (_) {
+    button.disabled = false;
+    $('audioSaveMessage').textContent = 'The recording could not be prepared. Please record again.';
+  }
+}
+
 function createCard(sentence, preview = false) {
   const node = $('cardTemplate').content.firstElementChild.cloneNode(true);
   node.querySelector('.category-pill').textContent = sentence.category || 'Other';
   node.querySelector('.record-id').textContent = preview ? 'PREVIEW' : sentence.recordId || '';
   node.querySelector('.hindi').textContent = sentence.hindiSentence;
+  const roman = romanHindiFor(sentence);
+  node.querySelector('.roman-hindi').textContent = roman ? `Roman Hindi: ${roman}` : 'Roman Hindi: Not added';
   node.querySelector('.chinese').textContent = sentence.chineseSentence;
   node.querySelector('.pinyin').textContent = sentence.pinyin;
   node.querySelector('.explanation').textContent = sentence.hindiExplanation || 'No explanation added.';
@@ -129,7 +299,17 @@ function createCard(sentence, preview = false) {
   node.querySelector('.tags').innerHTML = tags.map(tag => `<span class="tag"></span>`).join('');
   node.querySelectorAll('.tag').forEach((el, i) => { el.textContent = tags[i]; });
   const speak = node.querySelector('.speak-button');
-  speak.addEventListener('click', () => speakChinese(sentence.chineseSentence, speak));
+  speak.title = sentence.standardAudioUrl ? 'Play teacher model voice' : 'Play browser voice';
+  speak.addEventListener('click', () => playSentenceModel(sentence, speak));
+  const recordButton = node.querySelector('.card-record-button');
+  const playButton = node.querySelector('.card-play-button');
+  const saveModelButton = node.querySelector('.card-save-model-button');
+  recordButton.addEventListener('click', () => toggleCardRecording(node, sentence, preview));
+  playButton.addEventListener('click', () => {
+    const recording = recordingForSentence(sentence);
+    if (recording) new Audio(recording.url).play();
+  });
+  saveModelButton.addEventListener('click', () => openAudioPinDialog(sentence, node));
   return node;
 }
 
@@ -417,7 +597,7 @@ function updateTopicPicker() {
 
 function renderSentences() {
   const visible = state.sentences.filter(s => {
-    const haystack = normalizeSearchText([s.recordId,s.hindiSentence,s.chineseSentence,s.pinyin,s.hindiExplanation,s.category,s.tags].join(' '));
+    const haystack = normalizeSearchText([s.recordId,s.hindiSentence,romanHindiFor(s),s.chineseSentence,s.pinyin,s.hindiExplanation,s.category,s.tags].join(' '));
     const topicMatch = state.selectedCategories.size === 0 || [...sentenceTopics(s)].some(topic => state.selectedCategories.has(topic));
     return matchesKeywordExpression(haystack) && topicMatch;
   });
@@ -433,7 +613,7 @@ function handlePreview() {
   if (!text) { $('parseMessage').textContent = 'Paste an AI answer first.'; return; }
   if (text !== pastedText) $('pasteInput').value = text;
   const parsed = parsePaste(text);
-  const missing = [['Hindi',parsed.hindiSentence],['Chinese',parsed.chineseSentence],['Pinyin',parsed.pinyin],['Explanation',parsed.hindiExplanation]].filter(([,v]) => !v).map(([k]) => k);
+  const missing = [['Hindi',parsed.hindiSentence],['Chinese',parsed.chineseSentence],['Pinyin',parsed.pinyin],['Roman',parsed.romanHindi],['Explanation',parsed.hindiExplanation]].filter(([,v]) => !v).map(([k]) => k);
   if (missing.length) { $('parseMessage').textContent = `Please add these labelled parts: ${missing.join(', ')}.`; return; }
   state.preview = parsed; $('parseMessage').textContent = '';
   const mount = $('previewCard'); mount.innerHTML = ''; mount.appendChild(createCard(parsed, true));
@@ -596,5 +776,8 @@ $('saveButton').addEventListener('click', openPinDialog);
 $('confirmSave').addEventListener('click', submitSentence);
 $('pinInput').addEventListener('keydown', e => { if (e.key === 'Enter') submitSentence(); });
 $('closePin').addEventListener('click', () => $('pinDialog').close());
+$('confirmAudioSave').addEventListener('click', submitTeacherAudio);
+$('audioPinInput').addEventListener('keydown', e => { if (e.key === 'Enter') submitTeacherAudio(); });
+$('closeAudioPin').addEventListener('click', () => { pendingModelSave = null; $('audioPinDialog').close(); });
 initPronunciationLab();
 loadBank();

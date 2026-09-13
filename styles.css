@@ -45,3 +45,15 @@
 .tone-audio:nth-child(3){background:#f7e4df}
 .tone-audio.playing{background:var(--teal);color:white}
 .tone-audio:focus-visible{outline:3px solid rgba(11,112,107,.25);outline-offset:2px}
+
+/* Roman Hindi and sentence-by-sentence pronunciation practice */
+.sentence-card .roman-hindi{margin:-8px 0 18px;color:var(--muted);font-size:1rem;line-height:1.5;font-style:italic;overflow-wrap:anywhere}
+.sentence-audio-practice{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;margin:0 0 22px;padding:14px;border:1px solid var(--line);border-radius:12px;background:#fffaf2}
+.sentence-audio-practice button{min-height:42px;border:1px solid var(--line);border-radius:8px;background:white;color:var(--ink);padding:8px 10px;font-size:12px;font-weight:700;cursor:pointer}
+.sentence-audio-practice button:disabled{opacity:.45;cursor:not-allowed}
+.sentence-audio-practice .card-record-button{background:#e5f2ee;border-color:#c9dfd8}
+.sentence-audio-practice .card-record-button.recording{background:var(--red);border-color:var(--red);color:white}
+.sentence-audio-practice .card-save-model-button{background:var(--yellow);border-color:#ead17b}
+.card-recording-status{grid-column:1/-1;min-height:18px;color:var(--muted);font-size:12px;line-height:1.4}
+.sentence-card .speak-button[title="Play teacher model voice"]{background:var(--teal);color:white}
+@media(max-width:700px){.sentence-audio-practice{grid-template-columns:1fr 1fr}.sentence-audio-practice .card-save-model-button{grid-column:1/-1}}
