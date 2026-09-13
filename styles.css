@@ -57,3 +57,11 @@
 .card-recording-status{grid-column:1/-1;min-height:18px;color:var(--muted);font-size:12px;line-height:1.4}
 .sentence-card .speak-button[title="Play teacher model voice"]{background:var(--teal);color:white}
 @media(max-width:700px){.sentence-audio-practice{grid-template-columns:1fr 1fr}.sentence-audio-practice .card-save-model-button{grid-column:1/-1}}
+
+/* Hindi sentence playback */
+.hindi-row{display:flex;align-items:flex-start;gap:14px;margin:25px 0 16px}
+.sentence-card .hindi-row .hindi{flex:1;min-width:0;margin:0}
+.hindi-speak-button{width:54px;height:54px;flex:none;display:grid;place-items:center;border:0;border-radius:50%;background:#e5f2ee;color:var(--teal);font-size:19px;cursor:pointer}
+.hindi-speak-button.speaking{background:var(--teal);color:white;box-shadow:0 0 0 5px rgba(11,112,107,.14)}
+.hindi-speak-button:focus-visible{outline:3px solid rgba(11,112,107,.25);outline-offset:3px}
+@media(max-width:700px){.hindi-row{gap:10px}.hindi-speak-button{width:48px;height:48px}}

@@ -243,9 +243,10 @@ async function submitTeacherAudio() {
 
   try {
     const audioData = await blobToBase64(recording.blob);
+    const requestId = `audio-${Date.now()}-${Math.random().toString(36).slice(2,10)}`;
     const form = document.createElement('form');
     form.method = 'POST'; form.action = API_URL; form.target = 'submissionFrame'; form.hidden = true;
-    const fields = {action:'saveAudio', pin, recordId:sentence.recordId, mimeType:recording.mimeType, audioData};
+    const fields = {action:'saveAudio', requestId, pin, recordId:sentence.recordId, mimeType:recording.mimeType, audioData};
     Object.entries(fields).forEach(([name,value]) => {
       const field = name === 'audioData' ? document.createElement('textarea') : document.createElement('input');
       field.name = name; field.value = value; form.appendChild(field);
@@ -254,31 +255,34 @@ async function submitTeacherAudio() {
     try { localStorage.setItem('csbSubmissionPin', pin); } catch (_) {}
 
     let checks = 0;
-    const previousUrl = sentence.standardAudioUrl || '';
     const verify = setInterval(() => {
       checks += 1;
-      const callback = `verifyAudio${Date.now()}`;
+      const callback = `verifyAudioStatus${Date.now()}`;
       const script = document.createElement('script');
       window[callback] = data => {
         delete window[callback]; script.remove();
-        const rows = data && data.success ? data.sentences || [] : [];
-        const updated = rows.find(row => row.recordId === sentence.recordId && row.standardAudioUrl && row.standardAudioUrl !== previousUrl);
-        if (updated) {
+        if (data && data.success && data.standardAudioUrl) {
           clearInterval(verify);
-          state.sentences = rows;
+          const saved = state.sentences.find(row => row.recordId === sentence.recordId);
+          if (saved) saved.standardAudioUrl = data.standardAudioUrl;
           renderSentences();
-          $('audioSaveMessage').textContent = 'Teacher recording saved!';
+          $('audioSaveMessage').textContent = 'Teacher recording saved! The model button now uses your voice.';
           button.disabled = false;
-          setTimeout(() => $('audioPinDialog').close(), 900);
-        } else if (checks >= 12) {
+          setTimeout(() => $('audioPinDialog').close(), 1300);
+        } else if (data && data.success === false) {
           clearInterval(verify);
           button.disabled = false;
-          $('audioSaveMessage').textContent = 'Upload was sent, but confirmation is taking longer. Refresh before trying again.';
+          $('audioSaveMessage').textContent = `Save failed: ${data.error || 'Unknown backend error.'}`;
+        } else if (checks >= 20) {
+          clearInterval(verify);
+          button.disabled = false;
+          $('audioSaveMessage').textContent = 'No confirmation was received. Please check that the newest BankApi.gs was deployed.';
         }
       };
-      script.src = `${API_URL}?action=list&callback=${callback}&_=${Date.now()}`;
+      script.onerror = () => { delete window[callback]; script.remove(); };
+      script.src = `${API_URL}?action=uploadStatus&requestId=${encodeURIComponent(requestId)}&callback=${callback}&_=${Date.now()}`;
       document.body.appendChild(script);
-    }, 1800);
+    }, 1500);
   } catch (_) {
     button.disabled = false;
     $('audioSaveMessage').textContent = 'The recording could not be prepared. Please record again.';
@@ -290,6 +294,8 @@ function createCard(sentence, preview = false) {
   node.querySelector('.category-pill').textContent = sentence.category || 'Other';
   node.querySelector('.record-id').textContent = preview ? 'PREVIEW' : sentence.recordId || '';
   node.querySelector('.hindi').textContent = sentence.hindiSentence;
+  const hindiSpeak = node.querySelector('.hindi-speak-button');
+  hindiSpeak.addEventListener('click', () => speakHindi(sentence.hindiSentence, hindiSpeak));
   const roman = romanHindiFor(sentence);
   const romanLine = node.querySelector('.roman-hindi');
   romanLine.textContent = roman ? `Roman Hindi: ${roman}` : '';
@@ -323,6 +329,19 @@ function speakChinese(text, button) {
   utterance.rate = Number(state.settings.speechRate) || 0.85;
   const voices = speechSynthesis.getVoices();
   utterance.voice = voices.find(v => v.lang.toLowerCase() === 'zh-tw') || voices.find(v => v.lang.toLowerCase().startsWith('zh')) || null;
+  utterance.onstart = () => button.classList.add('speaking');
+  utterance.onend = utterance.onerror = () => button.classList.remove('speaking');
+  speechSynthesis.speak(utterance);
+}
+
+function speakHindi(text, button) {
+  if (!('speechSynthesis' in window)) return alert('Speech is not supported in this browser. Please try Chrome, Edge or Safari.');
+  speechSynthesis.cancel();
+  const utterance = new SpeechSynthesisUtterance(text);
+  utterance.lang = 'hi-IN';
+  utterance.rate = 0.85;
+  const voices = speechSynthesis.getVoices();
+  utterance.voice = voices.find(v => v.lang.toLowerCase() === 'hi-in') || voices.find(v => v.lang.toLowerCase().startsWith('hi')) || null;
   utterance.onstart = () => button.classList.add('speaking');
   utterance.onend = utterance.onerror = () => button.classList.remove('speaking');
   speechSynthesis.speak(utterance);
