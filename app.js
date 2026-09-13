@@ -146,6 +146,191 @@ function speakChinese(text, button) {
   speechSynthesis.speak(utterance);
 }
 
+/* Pronunciation Lab: listening, recording, pitch direction and homophones. */
+const toneModels = {
+  1: { text:'媽', curve:[0.78,0.79,0.78,0.79,0.78] },
+  2: { text:'麻', curve:[0.28,0.36,0.49,0.65,0.82] },
+  3: { text:'馬', curve:[0.55,0.36,0.24,0.38,0.68] },
+  4: { text:'罵', curve:[0.84,0.67,0.49,0.31,0.17] }
+};
+
+const homophoneFamilies = {
+  shi4: [
+    {char:'是',pinyin:'shì',meaning:'to be / होना',word:'是的',wordPinyin:'shì de',wordMeaning:'yes'},
+    {char:'事',pinyin:'shì',meaning:'matter / बात',word:'事情',wordPinyin:'shìqing',wordMeaning:'matter; event'},
+    {char:'市',pinyin:'shì',meaning:'city; market / शहर; बाज़ार',word:'市場',wordPinyin:'shìchǎng',wordMeaning:'market'},
+    {char:'室',pinyin:'shì',meaning:'room / कमरा',word:'教室',wordPinyin:'jiàoshì',wordMeaning:'classroom'},
+    {char:'試',pinyin:'shì',meaning:'test; try / परीक्षा; कोशिश',word:'考試',wordPinyin:'kǎoshì',wordMeaning:'exam'},
+    {char:'式',pinyin:'shì',meaning:'style; form / प्रकार',word:'方式',wordPinyin:'fāngshì',wordMeaning:'method'},
+    {char:'世',pinyin:'shì',meaning:'world; generation / संसार',word:'世界',wordPinyin:'shìjiè',wordMeaning:'world'},
+    {char:'視',pinyin:'shì',meaning:'look; vision / दृष्टि',word:'電視',wordPinyin:'diànshì',wordMeaning:'television'}
+  ],
+  yi4: [
+    {char:'意',pinyin:'yì',meaning:'meaning; idea / अर्थ; विचार',word:'意思',wordPinyin:'yìsi',wordMeaning:'meaning'},
+    {char:'易',pinyin:'yì',meaning:'easy; change / आसान; बदलना',word:'容易',wordPinyin:'róngyì',wordMeaning:'easy'},
+    {char:'義',pinyin:'yì',meaning:'justice; meaning / न्याय; अर्थ',word:'意義',wordPinyin:'yìyì',wordMeaning:'significance'},
+    {char:'藝',pinyin:'yì',meaning:'art; skill / कला',word:'藝術',wordPinyin:'yìshù',wordMeaning:'art'},
+    {char:'議',pinyin:'yì',meaning:'discuss / चर्चा',word:'建議',wordPinyin:'jiànyì',wordMeaning:'suggestion'},
+    {char:'憶',pinyin:'yì',meaning:'remember / स्मरण',word:'回憶',wordPinyin:'huíyì',wordMeaning:'memory'},
+    {char:'異',pinyin:'yì',meaning:'different / अलग',word:'不同意',wordPinyin:'bù tóngyì',wordMeaning:'disagree'},
+    {char:'億',pinyin:'yì',meaning:'one hundred million / दस करोड़',word:'一億',wordPinyin:'yí yì',wordMeaning:'100 million'}
+  ],
+  gong1: [
+    {char:'工',pinyin:'gōng',meaning:'work / काम',word:'工作',wordPinyin:'gōngzuò',wordMeaning:'work'},
+    {char:'公',pinyin:'gōng',meaning:'public / सार्वजनिक',word:'公園',wordPinyin:'gōngyuán',wordMeaning:'park'},
+    {char:'功',pinyin:'gōng',meaning:'achievement / उपलब्धि',word:'成功',wordPinyin:'chénggōng',wordMeaning:'succeed'},
+    {char:'宮',pinyin:'gōng',meaning:'palace / महल',word:'故宮',wordPinyin:'Gùgōng',wordMeaning:'Palace Museum'},
+    {char:'供',pinyin:'gōng',meaning:'provide / प्रदान करना',word:'提供',wordPinyin:'tígōng',wordMeaning:'provide'},
+    {char:'攻',pinyin:'gōng',meaning:'attack / हमला',word:'攻擊',wordPinyin:'gōngjí',wordMeaning:'attack'},
+    {char:'弓',pinyin:'gōng',meaning:'bow / धनुष',word:'弓箭',wordPinyin:'gōngjiàn',wordMeaning:'bow and arrow'},
+    {char:'恭',pinyin:'gōng',meaning:'respectful / आदरपूर्ण',word:'恭喜',wordPinyin:'gōngxǐ',wordMeaning:'congratulations'}
+  ]
+};
+
+const contextQuestions = [
+  {sentence:'我＿＿學生。',pinyin:'Wǒ shì xuéshēng.',options:['是','事','市','試'],answer:'是',explain:'是 (shì) means “to be”: I am a student.'},
+  {sentence:'我明天要考＿＿。',pinyin:'Wǒ míngtiān yào kǎoshì.',options:['室','試','市','事'],answer:'試',explain:'考試 (kǎoshì) is the complete word for “exam”.'},
+  {sentence:'老師在教＿＿。',pinyin:'Lǎoshī zài jiàoshì.',options:['是','世','室','視'],answer:'室',explain:'教室 (jiàoshì) means “classroom”.'},
+  {sentence:'這個字是什麼＿＿思？',pinyin:'Zhège zì shì shénme yìsi?',options:['意','易','藝','議'],answer:'意',explain:'意思 (yìsi) means “meaning”.'},
+  {sentence:'謝謝你的建＿＿。',pinyin:'Xièxie nǐ de jiànyì.',options:['憶','議','義','億'],answer:'議',explain:'建議 (jiànyì) means “suggestion”.'},
+  {sentence:'他在銀行＿＿作。',pinyin:'Tā zài yínháng gōngzuò.',options:['工','公','功','宮'],answer:'工',explain:'工作 (gōngzuò) means “work”.'}
+];
+
+let recorder = null;
+let recordedChunks = [];
+let recordedUrl = '';
+let quizIndex = 0;
+
+function speakLabText(text, button) {
+  const original = button && button.textContent;
+  speakChinese(text, button || document.createElement('button'));
+  if (button) {
+    button.textContent = '♪ Playing';
+    setTimeout(() => { button.textContent = original; }, 1200);
+  }
+}
+
+function showLabPanel(panel) {
+  const tone = panel === 'tone';
+  $('tonePractice').classList.toggle('hidden', !tone);
+  $('homophonePractice').classList.toggle('hidden', tone);
+  $('toneTab').classList.toggle('active', tone);
+  $('homophoneTab').classList.toggle('active', !tone);
+  $('toneTab').setAttribute('aria-selected', String(tone));
+  $('homophoneTab').setAttribute('aria-selected', String(!tone));
+}
+
+function drawPitch(reference, student = []) {
+  const canvas = $('pitchCanvas');
+  if (!canvas) return;
+  const ctx = canvas.getContext('2d');
+  const w = canvas.width, h = canvas.height, pad = 30;
+  ctx.clearRect(0,0,w,h); ctx.fillStyle = '#fffaf2'; ctx.fillRect(0,0,w,h);
+  ctx.strokeStyle = '#dedbd2'; ctx.lineWidth = 1;
+  for (let i=1;i<5;i++) { const y=pad+(h-pad*2)*i/5; ctx.beginPath(); ctx.moveTo(pad,y); ctx.lineTo(w-pad,y); ctx.stroke(); }
+  const line = (values,color,width) => {
+    if (!values.length) return;
+    ctx.strokeStyle=color; ctx.lineWidth=width; ctx.lineCap='round'; ctx.lineJoin='round'; ctx.beginPath();
+    values.forEach((v,i) => { const x=pad+(w-pad*2)*(i/(values.length-1||1)); const y=h-pad-v*(h-pad*2); i?ctx.lineTo(x,y):ctx.moveTo(x,y); }); ctx.stroke();
+  };
+  line(reference,'#0b706b',7); line(student,'#d94a36',4);
+}
+
+function autocorrelate(buffer, sampleRate) {
+  let rms=0; for (let i=0;i<buffer.length;i++) rms+=buffer[i]*buffer[i]; rms=Math.sqrt(rms/buffer.length);
+  if (rms < 0.012) return -1;
+  let bestOffset=-1, bestCorrelation=0;
+  const minOffset=Math.floor(sampleRate/450), maxOffset=Math.min(Math.floor(sampleRate/70),buffer.length-1);
+  for (let offset=minOffset;offset<=maxOffset;offset++) {
+    let corr=0; for (let i=0;i<buffer.length-offset;i++) corr+=buffer[i]*buffer[i+offset];
+    corr/=buffer.length-offset;
+    if (corr>bestCorrelation) { bestCorrelation=corr; bestOffset=offset; }
+  }
+  return bestCorrelation>0.005 ? sampleRate/bestOffset : -1;
+}
+
+async function analyseRecording(blob) {
+  const data = await blob.arrayBuffer();
+  const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+  const audio = await audioCtx.decodeAudioData(data.slice(0));
+  const samples = audio.getChannelData(0), windowSize=2048, step=Math.max(512,Math.floor(samples.length/60));
+  const pitches=[];
+  for (let start=0;start+windowSize<samples.length;start+=step) {
+    const pitch=autocorrelate(samples.subarray(start,start+windowSize),audio.sampleRate);
+    if (pitch>70&&pitch<450) pitches.push(pitch);
+  }
+  await audioCtx.close();
+  if (pitches.length<3) throw new Error('Not enough clear voice was detected.');
+  const sorted=[...pitches].sort((a,b)=>a-b), low=sorted[Math.floor(sorted.length*.1)], high=sorted[Math.floor(sorted.length*.9)];
+  const span=Math.max(20,high-low), normalized=pitches.map(v=>Math.max(.05,Math.min(.95,(v-low)/span)));
+  const smoothed=normalized.map((v,i,a)=>a.slice(Math.max(0,i-2),i+3).reduce((s,n)=>s+n,0)/a.slice(Math.max(0,i-2),i+3).length);
+  drawPitch(toneModels[$('practiceTone').value].curve,smoothed);
+}
+
+async function toggleRecording() {
+  if (recorder && recorder.state === 'recording') { recorder.stop(); return; }
+  if (!navigator.mediaDevices || !window.MediaRecorder) {
+    $('recordingStatus').textContent='Recording is not supported here. Try Chrome or Safari.'; return;
+  }
+  try {
+    const stream=await navigator.mediaDevices.getUserMedia({audio:true});
+    recordedChunks=[]; recorder=new MediaRecorder(stream);
+    recorder.ondataavailable=e=>{if(e.data.size) recordedChunks.push(e.data);};
+    recorder.onstop=async()=>{
+      stream.getTracks().forEach(t=>t.stop());
+      const blob=new Blob(recordedChunks,{type:recorder.mimeType||'audio/webm'});
+      if(recordedUrl) URL.revokeObjectURL(recordedUrl); recordedUrl=URL.createObjectURL(blob);
+      $('recordedAudio').src=recordedUrl; $('playRecording').disabled=false;
+      $('recordTone').classList.remove('recording'); $('recordTone').textContent='● Start recording';
+      $('recordingStatus').textContent='Recording ready. Compare the two lines.';
+      try { await analyseRecording(blob); } catch(e) { $('recordingStatus').textContent=e.message+' Try again in a quiet place.'; }
+    };
+    recorder.start(); $('recordTone').classList.add('recording'); $('recordTone').textContent='■ Stop recording';
+    $('recordingStatus').textContent='Recording… Say the syllable for about one second.';
+    setTimeout(()=>{if(recorder&&recorder.state==='recording')recorder.stop();},3500);
+  } catch (_) { $('recordingStatus').textContent='Microphone permission was not allowed. Please allow it and try again.'; }
+}
+
+function renderHomophones(key='shi4') {
+  const mount=$('homophoneGrid'); mount.innerHTML='';
+  homophoneFamilies[key].forEach(item=>{
+    const card=document.createElement('article'); card.className='homophone-card';
+    const top=document.createElement('div'); top.className='homophone-top';
+    const char=document.createElement('span'); char.className='homophone-character'; char.textContent=item.char;
+    const play=document.createElement('button'); play.type='button'; play.className='homophone-speak'; play.textContent='▶'; play.setAttribute('aria-label',`Listen to ${item.word}`); play.addEventListener('click',()=>speakLabText(item.word,play));
+    top.append(char,play); card.append(top);
+    const py=document.createElement('strong'); py.textContent=item.pinyin; card.append(py);
+    const meaning=document.createElement('small'); meaning.textContent=item.meaning; card.append(meaning);
+    const word=document.createElement('p'); word.className='homophone-word'; word.textContent=`${item.word} · ${item.wordPinyin}`; card.append(word);
+    const wordMeaning=document.createElement('small'); wordMeaning.textContent=item.wordMeaning; card.append(wordMeaning); mount.append(card);
+  });
+}
+
+function renderQuiz() {
+  const q=contextQuestions[quizIndex%contextQuestions.length]; $('quizQuestion').textContent=q.sentence; $('quizPinyin').textContent=q.pinyin;
+  $('quizFeedback').textContent=''; const mount=$('quizOptions'); mount.innerHTML='';
+  q.options.forEach(option=>{const b=document.createElement('button');b.type='button';b.textContent=option;b.addEventListener('click',()=>{
+    mount.querySelectorAll('button').forEach(x=>x.disabled=true); b.classList.add(option===q.answer?'correct':'wrong');
+    if(option!==q.answer)[...mount.children].find(x=>x.textContent===q.answer)?.classList.add('correct');
+    $('quizFeedback').textContent=option===q.answer?`Correct. ${q.explain}`:`Try to read the complete word. ${q.explain}`;
+    speakLabText(q.sentence.replace('＿＿',q.answer),document.createElement('button'));
+  });mount.append(b);});
+}
+
+function initPronunciationLab() {
+  if (!$('pronunciationLab')) return;
+  $('toneTab').addEventListener('click',()=>showLabPanel('tone'));
+  $('homophoneTab').addEventListener('click',()=>showLabPanel('homophone'));
+  document.querySelectorAll('.tone-card').forEach(card=>card.querySelector('.tone-listen').addEventListener('click',e=>speakLabText(card.dataset.text,e.currentTarget)));
+  $('practiceTone').addEventListener('change',()=>drawPitch(toneModels[$('practiceTone').value].curve));
+  $('hearPracticeTone').addEventListener('click',e=>speakLabText(toneModels[$('practiceTone').value].text,e.currentTarget));
+  $('recordTone').addEventListener('click',toggleRecording);
+  $('playRecording').addEventListener('click',()=>$('recordedAudio').play());
+  document.querySelectorAll('.sound-chip').forEach(chip=>chip.addEventListener('click',()=>{document.querySelectorAll('.sound-chip').forEach(c=>c.classList.remove('active'));chip.classList.add('active');renderHomophones(chip.dataset.sound);}));
+  $('nextQuiz').addEventListener('click',()=>{quizIndex++;renderQuiz();});
+  drawPitch(toneModels[1].curve); renderHomophones(); renderQuiz();
+}
+
 function renderFilters() {
   const mount = $('topicOptions');
   mount.innerHTML = '';
@@ -384,4 +569,5 @@ $('saveButton').addEventListener('click', openPinDialog);
 $('confirmSave').addEventListener('click', submitSentence);
 $('pinInput').addEventListener('keydown', e => { if (e.key === 'Enter') submitSentence(); });
 $('closePin').addEventListener('click', () => $('pinDialog').close());
+initPronunciationLab();
 loadBank();
