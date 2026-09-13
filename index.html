@@ -15,7 +15,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Noto+Sans+Devanagari:wght@400;500;600&family=Noto+Sans+TC:wght@400;500;700&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="styles.css?v=20260911-9">
+  <link rel="stylesheet" href="styles.css?v=20260913-1">
 </head>
 <body>
   <header class="topbar">
@@ -42,6 +42,75 @@
         <span><strong id="sentenceCount">—</strong> sentences</span>
         <span><strong id="categoryCount">—</strong> categories</span>
         <span class="live-status" id="apiStatus"><i></i> Connecting</span>
+      </div>
+    </section>
+
+    <section class="pronunciation-lab" id="pronunciationLab" aria-labelledby="pronunciationTitle">
+      <div class="section-heading lab-heading">
+        <div><span class="step">PRACTISE</span><h2 id="pronunciationTitle">Pronunciation Lab</h2></div>
+      </div>
+      <p class="section-note">Hear the four tones, record your own voice, and learn how the same sound can have different meanings.</p>
+
+      <div class="lab-tabs" role="tablist" aria-label="Pronunciation activities">
+        <button class="lab-tab active" id="toneTab" type="button" role="tab" aria-selected="true" aria-controls="tonePractice">Four Tones</button>
+        <button class="lab-tab" id="homophoneTab" type="button" role="tab" aria-selected="false" aria-controls="homophonePractice">Same Sound</button>
+      </div>
+
+      <div class="lab-panel" id="tonePractice" role="tabpanel" aria-labelledby="toneTab">
+        <div class="lab-intro-grid">
+          <div>
+            <span class="lab-kicker">LISTEN AND COMPARE</span>
+            <h3>One syllable. Four directions.</h3>
+            <p>Listen to <strong>mā, má, mǎ, mà</strong>. The sound begins with <em>ma</em>, but the tone changes the meaning.</p>
+          </div>
+          <p class="hindi-help">एक ही ध्वनि <strong>ma</strong> के चार अलग स्वर और चार अलग अर्थ हो सकते हैं। पहले सुनें, फिर बोलें और अपनी आवाज़ की रेखा देखें।</p>
+        </div>
+
+        <div class="tone-grid" id="toneGrid">
+          <article class="tone-card" data-tone="1" data-text="媽"><span class="tone-number">1</span><svg viewBox="0 0 120 62" aria-label="High flat tone"><path d="M12 15 L108 15"/></svg><strong>mā</strong><b>媽</b><small>mother · माँ</small><button type="button" class="tone-listen">▶ Listen</button></article>
+          <article class="tone-card" data-tone="2" data-text="麻"><span class="tone-number">2</span><svg viewBox="0 0 120 62" aria-label="Rising tone"><path d="M12 50 L108 12"/></svg><strong>má</strong><b>麻</b><small>hemp · सन</small><button type="button" class="tone-listen">▶ Listen</button></article>
+          <article class="tone-card" data-tone="3" data-text="馬"><span class="tone-number">3</span><svg viewBox="0 0 120 62" aria-label="Falling then rising tone"><path d="M12 24 Q58 67 108 18"/></svg><strong>mǎ</strong><b>馬</b><small>horse · घोड़ा</small><button type="button" class="tone-listen">▶ Listen</button></article>
+          <article class="tone-card" data-tone="4" data-text="罵"><span class="tone-number">4</span><svg viewBox="0 0 120 62" aria-label="Falling tone"><path d="M12 12 L108 54"/></svg><strong>mà</strong><b>罵</b><small>scold · डाँटना</small><button type="button" class="tone-listen">▶ Listen</button></article>
+        </div>
+
+        <div class="record-practice">
+          <div class="record-controls">
+            <label for="practiceTone">Choose a tone</label>
+            <select id="practiceTone"><option value="1">1st tone · mā · 媽</option><option value="2">2nd tone · má · 麻</option><option value="3">3rd tone · mǎ · 馬</option><option value="4">4th tone · mà · 罵</option></select>
+            <button class="secondary-button" id="hearPracticeTone" type="button">▶ Hear model</button>
+            <button class="primary-button record-button" id="recordTone" type="button">● Start recording</button>
+            <button class="secondary-button" id="playRecording" type="button" disabled>▶ Play my voice</button>
+          </div>
+          <div class="pitch-panel">
+            <div class="pitch-heading"><strong>Your tone movement</strong><span id="recordingStatus" role="status" aria-live="polite">Choose a tone and record your voice.</span></div>
+            <canvas id="pitchCanvas" width="760" height="240" aria-label="Reference tone curve and recorded pitch curve"></canvas>
+            <div class="pitch-legend"><span><i class="reference-line"></i>Reference direction</span><span><i class="student-line"></i>Your voice</span></div>
+            <p class="pitch-note">This graph is a learning guide, not an exam score. Try to make your red line move in the same direction as the green line.</p>
+          </div>
+          <audio id="recordedAudio" hidden></audio>
+        </div>
+      </div>
+
+      <div class="lab-panel hidden" id="homophonePractice" role="tabpanel" aria-labelledby="homophoneTab">
+        <div class="lab-intro-grid">
+          <div><span class="lab-kicker">SAME SOUND DIFFERENT MEANING</span><h3>Listen to the word, not only the syllable.</h3><p>Many characters can share the same Pinyin and tone. The word and sentence tell us which meaning is correct.</p></div>
+          <p class="hindi-help">एक ही उच्चारण के कई चीनी अक्षर हो सकते हैं। सही अर्थ समझने के लिए पूरा शब्द और वाक्य देखें।</p>
+        </div>
+        <div class="sound-selector" role="group" aria-label="Choose a homophone family">
+          <button type="button" class="sound-chip active" data-sound="shi4">shì</button>
+          <button type="button" class="sound-chip" data-sound="yi4">yì</button>
+          <button type="button" class="sound-chip" data-sound="gong1">gōng</button>
+        </div>
+        <div class="homophone-grid" id="homophoneGrid"></div>
+        <div class="context-quiz">
+          <span class="lab-kicker">USE THE SENTENCE</span>
+          <h3>Choose the correct character</h3>
+          <p class="quiz-question" id="quizQuestion"></p>
+          <p class="quiz-pinyin" id="quizPinyin"></p>
+          <div class="quiz-options" id="quizOptions"></div>
+          <div class="quiz-feedback" id="quizFeedback" role="status" aria-live="polite"></div>
+          <button class="secondary-button" id="nextQuiz" type="button">Next question</button>
+        </div>
       </div>
     </section>
 
@@ -185,6 +254,6 @@ CATEGORY:
     </article>
   </template>
 
-  <script src="app.js?v=20260911-9"></script>
+  <script src="app.js?v=20260913-1"></script>
 </body>
 </html>
