@@ -206,6 +206,37 @@ function playSentenceModel(sentence, button) {
   document.body.appendChild(script);
 }
 
+async function getNaturalVoiceStream() {
+  const supported = navigator.mediaDevices.getSupportedConstraints
+    ? navigator.mediaDevices.getSupportedConstraints()
+    : {};
+  const audio = {};
+  ['autoGainControl', 'echoCancellation', 'noiseSuppression'].forEach(name => {
+    if (supported[name]) audio[name] = {exact:false};
+  });
+  if (supported.channelCount) audio.channelCount = {ideal:1};
+  if (supported.sampleRate) audio.sampleRate = {ideal:48000};
+  if (supported.sampleSize) audio.sampleSize = {ideal:16};
+
+  try {
+    return await navigator.mediaDevices.getUserMedia({audio});
+  } catch (error) {
+    if (error && (error.name === 'NotAllowedError' || error.name === 'SecurityError')) throw error;
+    ['autoGainControl', 'echoCancellation', 'noiseSuppression'].forEach(name => {
+      if (supported[name]) audio[name] = {ideal:false};
+    });
+    return navigator.mediaDevices.getUserMedia({audio});
+  }
+}
+
+function createVoiceRecorder(stream) {
+  try {
+    return new MediaRecorder(stream, {audioBitsPerSecond:128000});
+  } catch (_) {
+    return new MediaRecorder(stream);
+  }
+}
+
 async function toggleCardRecording(node, sentence, preview) {
   const recordButton = node.querySelector('.card-record-button');
   const playButton = node.querySelector('.card-play-button');
@@ -227,9 +258,9 @@ async function toggleCardRecording(node, sentence, preview) {
   }
 
   try {
-    const stream = await navigator.mediaDevices.getUserMedia({audio:true});
+    const stream = await getNaturalVoiceStream();
     const chunks = [];
-    const recorder = new MediaRecorder(stream);
+    const recorder = createVoiceRecorder(stream);
     activeCardRecorder = recorder;
     activeCardStream = stream;
     activeCardButton = recordButton;
@@ -254,7 +285,7 @@ async function toggleCardRecording(node, sentence, preview) {
     recorder.start();
     recordButton.classList.add('recording');
     recordButton.textContent = '■ Stop recording';
-    status.textContent = 'Recording… Read the complete Chinese sentence.';
+    status.textContent = 'Recording… Automatic volume control is off. Keep a steady distance from the microphone.';
     setTimeout(() => {
       if (activeCardRecorder === recorder && recorder.state === 'recording') recorder.stop();
     }, 30000);
@@ -555,8 +586,8 @@ async function toggleRecording() {
     $('recordingStatus').textContent='Recording is not supported here. Try Chrome or Safari.'; return;
   }
   try {
-    const stream=await navigator.mediaDevices.getUserMedia({audio:true});
-    recordedChunks=[]; recorder=new MediaRecorder(stream);
+    const stream=await getNaturalVoiceStream();
+    recordedChunks=[]; recorder=createVoiceRecorder(stream);
     recorder.ondataavailable=e=>{if(e.data.size) recordedChunks.push(e.data);};
     recorder.onstop=async()=>{
       stream.getTracks().forEach(t=>t.stop());
@@ -568,7 +599,7 @@ async function toggleRecording() {
       try { await analyseRecording(blob); } catch(e) { $('recordingStatus').textContent=e.message+' Try again in a quiet place.'; }
     };
     recorder.start(); $('recordTone').classList.add('recording'); $('recordTone').textContent='■ Stop recording';
-    $('recordingStatus').textContent='Recording… Say the syllable for about one second.';
+    $('recordingStatus').textContent='Recording… Automatic volume control is off. Say the syllable for about one second.';
     setTimeout(()=>{if(recorder&&recorder.state==='recording')recorder.stop();},3500);
   } catch (_) { $('recordingStatus').textContent='Microphone permission was not allowed. Please allow it and try again.'; }
 }
