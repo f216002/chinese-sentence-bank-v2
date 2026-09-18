@@ -4,6 +4,8 @@
 .pin-field{display:grid;gap:7px;font-weight:700;margin:22px 0 12px}.pin-field input{padding:0 14px}.remember-pin{display:flex;align-items:center;gap:9px;color:var(--muted);font-size:14px;margin-bottom:20px}.remember-pin input{width:18px;height:18px}.full-button{width:100%}.submission-frame{position:absolute;width:1px;height:1px;border:0;clip:rect(0,0,0,0);overflow:hidden}
 .copy-prompt{margin:8px 0 12px}.format-note{font-size:13px}.format-note code{background:#f1eee6;padding:2px 5px;border-radius:4px}
 
+.card-admin{display:flex;align-items:center;gap:10px}.card-delete-button{border:1px solid #efb6ad;background:#fff7f5;color:#b73524;border-radius:6px;padding:5px 9px;font-size:11px;font-weight:700;cursor:pointer}.card-delete-button:hover{background:#b73524;color:#fff}.delete-step{color:#b73524}.delete-warning{color:#8f3025;font-weight:600}.delete-sentence-preview{display:grid;gap:7px;background:#fff7f5;border:1px solid #efc4bd;border-radius:10px;padding:16px;margin:16px 0}.delete-sentence-preview strong{font-family:"Noto Sans TC",sans-serif;font-size:20px}.delete-sentence-preview small{color:var(--muted)}.danger-button{border:0;border-radius:8px;background:#b73524;color:#fff;padding:15px 22px;font-weight:700;cursor:pointer}.danger-button:disabled{opacity:.45;cursor:not-allowed}
+
 /* Advanced search and multi-select topic filter */
 .tools{grid-template-columns:minmax(0,1fr) 260px;gap:14px;align-items:start}
 .search-builder{display:grid;grid-template-columns:minmax(120px,1fr) 78px minmax(120px,1fr) 78px minmax(120px,1fr);gap:8px}
