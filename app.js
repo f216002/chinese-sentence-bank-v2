@@ -42,6 +42,7 @@ let activeCardRecorder = null;
 let activeCardStream = null;
 let activeCardButton = null;
 let pendingModelSave = null;
+let pendingDeleteSentence = null;
 
 function parsePaste(text) {
   const labels = ['HINDI', 'CHINESE', 'PINYIN', 'ROMAN', 'EXPLANATION', 'CATEGORY', 'TAGS', 'AI SOURCE'];
@@ -374,10 +375,77 @@ async function submitTeacherAudio() {
   }
 }
 
+function openDeleteDialog(sentence) {
+  if (!sentence.recordId) return;
+  pendingDeleteSentence = sentence;
+  $('deleteSentenceText').textContent = sentence.chineseSentence || sentence.hindiSentence || 'Untitled sentence';
+  $('deleteRecordId').textContent = sentence.recordId;
+  try { $('deletePinInput').value = localStorage.getItem('csbSubmissionPin') || ''; } catch (_) {}
+  $('deleteMessage').textContent = '';
+  $('confirmDelete').disabled = false;
+  $('deleteDialog').showModal();
+  setTimeout(() => $('deletePinInput').focus(), 50);
+}
+
+function submitDeleteSentence() {
+  const pin = $('deletePinInput').value.trim();
+  if (!pin) { $('deleteMessage').textContent = 'Enter the teacher PIN.'; return; }
+  if (!pendingDeleteSentence) { $('deleteDialog').close(); return; }
+
+  const sentence = pendingDeleteSentence;
+  const button = $('confirmDelete');
+  const requestId = `delete-${Date.now()}-${Math.random().toString(36).slice(2,10)}`;
+  button.disabled = true;
+  $('deleteMessage').textContent = 'Deleting sentence…';
+  try { localStorage.setItem('csbSubmissionPin', pin); } catch (_) {}
+
+  const form = document.createElement('form');
+  form.method = 'POST'; form.action = API_URL; form.target = 'submissionFrame'; form.hidden = true;
+  const fields = {action:'delete', requestId, pin, recordId:sentence.recordId};
+  Object.entries(fields).forEach(([name,value]) => {
+    const field = document.createElement('input');
+    field.name = name; field.value = value; form.appendChild(field);
+  });
+  document.body.appendChild(form); form.submit(); form.remove();
+
+  let checks = 0;
+  const verify = setInterval(() => {
+    checks += 1;
+    const callback = `verifyDeleteStatus${Date.now()}`;
+    const script = document.createElement('script');
+    window[callback] = data => {
+      delete window[callback]; script.remove();
+      if (data && data.success && data.deletedRecordId === sentence.recordId) {
+        clearInterval(verify);
+        state.sentences = state.sentences.filter(row => row.recordId !== sentence.recordId);
+        $('sentenceCount').textContent = state.sentences.length;
+        renderSentences();
+        pendingDeleteSentence = null;
+        $('deleteMessage').textContent = 'Sentence deleted.';
+        setTimeout(() => $('deleteDialog').close(), 650);
+      } else if (data && data.success === false) {
+        clearInterval(verify);
+        button.disabled = false;
+        $('deleteMessage').textContent = `Delete failed: ${data.error || 'Unknown backend error.'}`;
+      } else if (checks >= 20) {
+        clearInterval(verify);
+        button.disabled = false;
+        $('deleteMessage').textContent = 'No confirmation was received. Refresh before trying again.';
+      }
+    };
+    script.onerror = () => { delete window[callback]; script.remove(); };
+    script.src = `${API_URL}?action=uploadStatus&requestId=${encodeURIComponent(requestId)}&callback=${callback}&_=${Date.now()}`;
+    document.body.appendChild(script);
+  }, 1200);
+}
+
 function createCard(sentence, preview = false) {
   const node = $('cardTemplate').content.firstElementChild.cloneNode(true);
   node.querySelector('.category-pill').textContent = sentence.category || 'Other';
   node.querySelector('.record-id').textContent = preview ? 'PREVIEW' : sentence.recordId || '';
+  const deleteButton = node.querySelector('.card-delete-button');
+  deleteButton.hidden = preview;
+  if (!preview) deleteButton.addEventListener('click', () => openDeleteDialog(sentence));
   node.querySelector('.hindi').textContent = sentence.hindiSentence;
   const hindiSpeak = node.querySelector('.hindi-speak-button');
   hindiSpeak.addEventListener('click', () => speakHindi(sentence.hindiSentence, hindiSpeak));
@@ -885,5 +953,8 @@ $('closePin').addEventListener('click', () => $('pinDialog').close());
 $('confirmAudioSave').addEventListener('click', submitTeacherAudio);
 $('audioPinInput').addEventListener('keydown', e => { if (e.key === 'Enter') submitTeacherAudio(); });
 $('closeAudioPin').addEventListener('click', () => { pendingModelSave = null; $('audioPinDialog').close(); });
+$('confirmDelete').addEventListener('click', submitDeleteSentence);
+$('deletePinInput').addEventListener('keydown', e => { if (e.key === 'Enter') submitDeleteSentence(); });
+$('closeDelete').addEventListener('click', () => { pendingDeleteSentence = null; $('deleteDialog').close(); });
 initPronunciationLab();
 loadBank();
