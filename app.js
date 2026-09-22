@@ -238,6 +238,158 @@ function createVoiceRecorder(stream) {
   }
 }
 
+function audioBufferPeak(audioBuffer) {
+  let peak = 0;
+  for (let channel = 0; channel < audioBuffer.numberOfChannels; channel += 1) {
+    const samples = audioBuffer.getChannelData(channel);
+    for (let index = 0; index < samples.length; index += 1) {
+      peak = Math.max(peak, Math.abs(samples[index]));
+    }
+  }
+  return peak;
+}
+
+async function kWeightedBuffer(audioBuffer) {
+  const OfflineContext = window.OfflineAudioContext || window.webkitOfflineAudioContext;
+  if (!OfflineContext) return audioBuffer;
+  const context = new OfflineContext(
+    audioBuffer.numberOfChannels,
+    audioBuffer.length,
+    audioBuffer.sampleRate
+  );
+  const source = context.createBufferSource();
+  source.buffer = audioBuffer;
+
+  // Web Audio approximation of the ITU-R BS.1770 K-weighting filters.
+  const shelf = context.createBiquadFilter();
+  shelf.type = 'highshelf';
+  shelf.frequency.value = 1681.974;
+  shelf.gain.value = 4;
+
+  const highpass = context.createBiquadFilter();
+  highpass.type = 'highpass';
+  highpass.frequency.value = 38.135;
+  highpass.Q.value = 0.5003;
+
+  source.connect(shelf);
+  shelf.connect(highpass);
+  highpass.connect(context.destination);
+  source.start();
+  return context.startRendering();
+}
+
+function blockEnergy(audioBuffer, start, length) {
+  let energy = 0;
+  for (let channel = 0; channel < audioBuffer.numberOfChannels; channel += 1) {
+    const samples = audioBuffer.getChannelData(channel);
+    const end = Math.min(samples.length, start + length);
+    let channelEnergy = 0;
+    for (let index = start; index < end; index += 1) {
+      channelEnergy += samples[index] * samples[index];
+    }
+    energy += channelEnergy / Math.max(1, end - start);
+  }
+  return energy;
+}
+
+function energyToLufs(energy) {
+  return -0.691 + 10 * Math.log10(Math.max(energy, 1e-12));
+}
+
+function measureIntegratedLufs(audioBuffer) {
+  const blockLength = Math.max(1, Math.round(audioBuffer.sampleRate * 0.4));
+  const step = Math.max(1, Math.round(audioBuffer.sampleRate * 0.1));
+  const energies = [];
+  if (audioBuffer.length <= blockLength) {
+    energies.push(blockEnergy(audioBuffer, 0, audioBuffer.length));
+  } else {
+    for (let start = 0; start + blockLength <= audioBuffer.length; start += step) {
+      energies.push(blockEnergy(audioBuffer, start, blockLength));
+    }
+  }
+
+  const aboveAbsoluteGate = energies.filter(energy => energyToLufs(energy) > -70);
+  if (!aboveAbsoluteGate.length) return -70;
+  const preliminaryEnergy = aboveAbsoluteGate.reduce((sum, value) => sum + value, 0) / aboveAbsoluteGate.length;
+  const relativeGate = energyToLufs(preliminaryEnergy) - 10;
+  const gated = aboveAbsoluteGate.filter(energy => energyToLufs(energy) > relativeGate);
+  const integratedEnergy = gated.reduce((sum, value) => sum + value, 0) / Math.max(1, gated.length);
+  return energyToLufs(integratedEnergy);
+}
+
+function encodeMonoWav(audioBuffer, gain) {
+  const length = audioBuffer.length;
+  const channelCount = audioBuffer.numberOfChannels;
+  const output = new ArrayBuffer(44 + length * 2);
+  const view = new DataView(output);
+  const writeText = (offset, text) => {
+    for (let index = 0; index < text.length; index += 1) {
+      view.setUint8(offset + index, text.charCodeAt(index));
+    }
+  };
+  writeText(0, 'RIFF');
+  view.setUint32(4, 36 + length * 2, true);
+  writeText(8, 'WAVE');
+  writeText(12, 'fmt ');
+  view.setUint32(16, 16, true);
+  view.setUint16(20, 1, true);
+  view.setUint16(22, 1, true);
+  view.setUint32(24, audioBuffer.sampleRate, true);
+  view.setUint32(28, audioBuffer.sampleRate * 2, true);
+  view.setUint16(32, 2, true);
+  view.setUint16(34, 16, true);
+  writeText(36, 'data');
+  view.setUint32(40, length * 2, true);
+
+  const channels = Array.from(
+    {length: channelCount},
+    (_, channel) => audioBuffer.getChannelData(channel)
+  );
+  let offset = 44;
+  for (let index = 0; index < length; index += 1) {
+    let sample = 0;
+    for (let channel = 0; channel < channelCount; channel += 1) {
+      sample += channels[channel][index];
+    }
+    sample = (sample / channelCount) * gain;
+    sample = Math.max(-1, Math.min(1, sample));
+    view.setInt16(offset, sample < 0 ? sample * 0x8000 : sample * 0x7fff, true);
+    offset += 2;
+  }
+  return new Blob([output], {type:'audio/wav'});
+}
+
+async function normalizeTeacherRecording(blob) {
+  const AudioContextClass = window.AudioContext || window.webkitAudioContext;
+  if (!AudioContextClass) return {blob, mimeType:blob.type || 'audio/webm', normalized:false};
+  const context = new AudioContextClass();
+  try {
+    const audioBuffer = await context.decodeAudioData((await blob.arrayBuffer()).slice(0));
+    const weighted = await kWeightedBuffer(audioBuffer);
+    const measuredLufs = measureIntegratedLufs(weighted);
+    const peak = audioBufferPeak(audioBuffer);
+    if (!Number.isFinite(measuredLufs) || peak <= 0) {
+      return {blob, mimeType:blob.type || 'audio/webm', normalized:false};
+    }
+
+    const targetGain = Math.pow(10, (-16 - measuredLufs) / 20);
+    const peakLimit = Math.pow(10, -1 / 20) / peak;
+    // Never add more than 18 dB. The -1 dBFS ceiling always has priority.
+    const gain = Math.max(0.01, Math.min(targetGain, peakLimit, Math.pow(10, 18 / 20)));
+    const normalizedBlob = encodeMonoWav(audioBuffer, gain);
+    const resultingLufs = measuredLufs + 20 * Math.log10(gain);
+    return {
+      blob: normalizedBlob,
+      mimeType: 'audio/wav',
+      normalized: true,
+      measuredLufs,
+      resultingLufs
+    };
+  } finally {
+    await context.close();
+  }
+}
+
 async function toggleCardRecording(node, sentence, preview) {
   const recordButton = node.querySelector('.card-record-button');
   const playButton = node.querySelector('.card-play-button');
@@ -266,19 +418,32 @@ async function toggleCardRecording(node, sentence, preview) {
     activeCardStream = stream;
     activeCardButton = recordButton;
     recorder.ondataavailable = event => { if (event.data.size) chunks.push(event.data); };
-    recorder.onstop = () => {
+    recorder.onstop = async () => {
       stream.getTracks().forEach(track => track.stop());
-      const blob = new Blob(chunks, {type:recorder.mimeType || 'audio/webm'});
+      const rawBlob = new Blob(chunks, {type:recorder.mimeType || 'audio/webm'});
+      status.textContent = 'Balancing recording volume…';
+      let processed = {blob:rawBlob, mimeType:rawBlob.type || 'audio/webm', normalized:false};
+      try {
+        processed = await normalizeTeacherRecording(rawBlob);
+      } catch (error) {
+        console.warn('Teacher recording normalization failed; using original audio.', error);
+      }
       const key = sentence.recordId || `preview-${sentence.chineseSentence}`;
       const previous = cardRecordings.get(key);
       if (previous && previous.url) URL.revokeObjectURL(previous.url);
-      const recording = {blob, url:URL.createObjectURL(blob), mimeType:blob.type || 'audio/webm'};
+      const recording = {
+        blob: processed.blob,
+        url: URL.createObjectURL(processed.blob),
+        mimeType: processed.mimeType
+      };
       cardRecordings.set(key, recording);
       playButton.disabled = false;
       saveButton.disabled = preview || !sentence.recordId;
       recordButton.classList.remove('recording');
       recordButton.textContent = '● Record again';
-      status.textContent = preview ? 'Recording ready. Save the sentence before saving a model voice.' : 'Recording ready. Listen and compare.';
+      status.textContent = processed.normalized
+        ? 'Recording ready. Volume balanced to about -16 LUFS with -1 dB peak protection.'
+        : 'Recording ready. Original audio was kept.';
       activeCardRecorder = null;
       activeCardStream = null;
       activeCardButton = null;
