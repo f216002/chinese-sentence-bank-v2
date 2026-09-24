@@ -99,3 +99,74 @@
 .edit-row{display:grid;grid-template-columns:1fr 1fr;gap:12px}
 #editWarnings{margin:14px 0 0}
 @media(max-width:700px){.edit-row{grid-template-columns:1fr}}
+
+/* ================= Course module: 當代中文課程 ================= */
+.course{padding-top:72px}
+.course-vol{font-size:.55em;color:var(--muted);font-weight:500}
+.course-lock{display:flex;align-items:flex-end;gap:12px;flex-wrap:wrap;background:#e8f2ed;border-radius:12px;padding:20px}
+.course-pin-field{display:grid;gap:7px;font-weight:700;font-size:14px}
+.course-pin-field input{width:220px;padding:0 14px}
+.course-lock-note{width:100%;margin:0;color:var(--red);font-size:14px;min-height:20px}
+.lesson-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(210px,1fr));gap:14px}
+.lesson-card{display:grid;gap:6px;justify-items:start;text-align:left;background:white;border:1px solid var(--line);border-radius:14px;padding:22px;cursor:pointer;box-shadow:0 8px 28px rgba(34,50,47,.06);color:var(--ink)}
+.lesson-card:hover:not(:disabled){border-color:var(--teal);transform:translateY(-2px)}
+.lesson-card:disabled{cursor:not-allowed;opacity:.55}
+.lesson-num{font-size:12px;font-weight:700;letter-spacing:.14em;color:var(--teal)}
+.lesson-zh{font-family:"Noto Sans TC",sans-serif;font-size:21px;font-weight:700}
+.lesson-en{font-size:13px;color:var(--muted)}
+.lesson-topic{font-size:12px;color:var(--red);font-weight:700}
+.lesson-status{font-size:12px;color:var(--muted);margin-top:6px}
+#lessonBackButton{margin-bottom:18px}
+.lesson-header{margin-bottom:20px}
+.lesson-header-top{display:flex;align-items:center;gap:10px}
+.lesson-header-zh{font-family:"Noto Sans TC",sans-serif;font-size:clamp(26px,4vw,36px);margin:8px 0 4px}
+.lesson-header-en{color:var(--muted);margin:0 0 14px}
+.lesson-goals{background:#e8f2ed;border-radius:12px;padding:16px 20px;margin-top:12px}
+.lesson-goals strong{color:var(--teal)}
+.lesson-goals p{margin:8px 0 0;line-height:1.7;font-family:"Noto Sans Devanagari","DM Sans",sans-serif}
+.lesson-tabs{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:22px}
+.lesson-tab{border:1px solid var(--line);background:white;border-radius:999px;padding:10px 20px;font-weight:700;cursor:pointer;color:var(--ink)}
+.lesson-tab.active{background:var(--ink);color:white;border-color:var(--ink)}
+.text-group{margin-bottom:34px}
+.text-group-head{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:14px}
+.text-group-head h4,.text-group-head-title{font-family:"Noto Sans TC",sans-serif;font-size:22px;margin:0 0 14px}
+.text-play-button.playing,.text-play-button.text-playing{background:var(--red);color:white;border-color:var(--red)}
+.script-speaker{display:inline-block;font-family:"Noto Sans TC",sans-serif;font-weight:700;color:white;background:var(--teal);border-radius:6px;padding:4px 12px;margin-bottom:12px;font-size:15px}
+.vocab-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:14px;margin-bottom:30px}
+.vocab-card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:20px;box-shadow:0 8px 28px rgba(34,50,47,.06);display:grid;gap:7px;align-content:start}
+.vocab-top{display:flex;justify-content:space-between;align-items:center;gap:10px}
+.vocab-word{font-family:"Noto Sans TC",sans-serif;font-size:30px;font-weight:700;line-height:1.3}
+.vocab-pos{font-size:12px;font-weight:700;color:var(--teal);background:#e5f2ee;border-radius:999px;padding:4px 10px}
+.vocab-pinyin{color:var(--red);font-weight:600;font-size:17px}
+.vocab-zhuyin{font-family:"Noto Sans TC",sans-serif;color:#8a6d1f;font-size:15px}
+.vocab-hindi-row{display:flex;align-items:center;justify-content:space-between;gap:10px}
+.vocab-hindi{font-family:"Noto Sans Devanagari",sans-serif;font-size:18px;color:#46534f;line-height:1.5}
+.vocab-hindi-speak{width:34px;height:34px;font-size:15px}
+.vocab-roman{color:var(--muted);font-size:14px}
+.vocab-example{font-size:13px;color:#4b5855;white-space:pre-wrap;line-height:1.6;border-top:1px dashed var(--line);padding-top:8px}
+.vocab-actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:4px}
+.vocab-actions .icon-button{width:38px;height:38px;font-size:16px}
+.vocab-status{font-size:12px;color:var(--muted);min-height:16px}
+.grammar-block{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:24px;margin-bottom:22px;box-shadow:0 8px 28px rgba(34,50,47,.06)}
+.grammar-point{border-bottom:1px solid var(--line);padding-bottom:16px;margin-bottom:18px}
+.grammar-pattern{font-family:"Noto Sans TC",sans-serif;font-size:24px;font-weight:700;line-height:1.5}
+.grammar-pinyin{color:var(--red);font-weight:600;margin-top:6px}
+.grammar-hindi{font-family:"Noto Sans Devanagari",sans-serif;color:#46534f;margin-top:8px;line-height:1.6}
+.grammar-function{color:var(--muted);font-size:14px;margin-top:8px;white-space:pre-wrap;line-height:1.7}
+.info-card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:24px;margin-bottom:16px;box-shadow:0 8px 28px rgba(34,50,47,.06)}
+.info-kicker{font-size:12px;font-weight:700;letter-spacing:.14em;color:var(--teal);margin-bottom:10px}
+.info-zh{font-family:"Noto Sans TC",sans-serif;font-size:21px;margin:0 0 10px}
+.info-hi{font-family:"Noto Sans Devanagari",sans-serif;color:#46534f;line-height:1.7;margin:0 0 10px}
+.info-explain{color:var(--muted);line-height:1.8;white-space:pre-wrap;margin:0}
+.info-actions{margin-top:14px}
+.course-import{margin-top:36px;border:1px dashed var(--line);border-radius:12px;padding:18px;background:white}
+.course-import summary{cursor:pointer;font-weight:700;color:var(--teal)}
+.import-controls{display:grid;gap:12px;margin-top:14px;max-width:520px}
+.import-controls select{padding:0 14px}
+.import-info{color:var(--muted);font-size:14px;line-height:1.6;margin:0}
+@media(max-width:700px){
+.course{padding-top:52px}
+.lesson-grid{grid-template-columns:1fr 1fr}
+.vocab-grid{grid-template-columns:1fr 1fr}
+.course-pin-field input{width:100%}
+}
