@@ -43,6 +43,7 @@ let activeCardStream = null;
 let activeCardButton = null;
 let pendingModelSave = null;
 let pendingDeleteSentence = null;
+let pendingEditSentence = null;
 
 function parsePaste(text) {
   const labels = ['HINDI', 'CHINESE', 'PINYIN', 'ROMAN', 'EXPLANATION', 'CATEGORY', 'TAGS', 'AI SOURCE'];
@@ -604,6 +605,194 @@ function submitDeleteSentence() {
   }, 1200);
 }
 
+/* Edit sentence: rebuild the record through create + delete, because the
+   backend has no update action. The old record is removed only after the
+   new version is confirmed saved. */
+function openEditDialog(sentence) {
+  if (!sentence.recordId) return;
+  pendingEditSentence = sentence;
+  $('editHindi').value = sentence.hindiSentence || '';
+  $('editChinese').value = sentence.chineseSentence || '';
+  $('editPinyin').value = sentence.pinyin || '';
+  $('editRoman').value = romanHindiFor(sentence);
+  $('editExplanation').value = sentence.hindiExplanation || '';
+  $('editCategory').value = sentence.category || 'Other';
+  $('editTags').value = sentence.tags || '';
+  $('editAiSource').value = sentence.aiSource || 'ChatGPT / Gemini';
+  const list = $('editCategoryList');
+  list.innerHTML = '';
+  (state.categories || []).forEach(c => {
+    const option = document.createElement('option');
+    option.value = c;
+    list.appendChild(option);
+  });
+  $('editRecordNote').textContent = `Editing record ${sentence.recordId}. The old record is replaced only after the new version is saved.`;
+  const hasAudio = !!(sentence.standardAudioUrl || teacherAudioCache.get(sentence.recordId) || recordingForSentence(sentence));
+  $('editAudioNote').classList.toggle('hidden', !hasAudio);
+  try { $('editPinInput').value = localStorage.getItem('csbSubmissionPin') || ''; } catch (_) {}
+  $('editMessage').textContent = '';
+  $('confirmEdit').disabled = false;
+  updateEditWarnings();
+  $('editDialog').showModal();
+  setTimeout(() => $('editHindi').focus(), 50);
+}
+
+function updateEditWarnings() {
+  const box = $('editWarnings');
+  const warnings = [];
+  const pinyinText = $('editPinyin').value.trim();
+  const pinyinIssues = validatePinyin(pinyinText);
+  pinyinIssues.slice(0, 8).forEach(issue => warnings.push(`Pinyin: ${issue}.`));
+  if (pinyinIssues.length > 8) warnings.push(`…and ${pinyinIssues.length - 8} more pinyin issues.`);
+  if (pinyinText && !/^[A-ZĀÁǍÀĒÉĚÈĪÍǏÌŌÓǑÒŪÚǓÙǕǗǙǛ]/.test(pinyinText)) warnings.push('Pinyin: the first syllable usually starts with a capital letter.');
+  const chinese = $('editChinese').value.trim();
+  const hindi = $('editHindi').value.trim();
+  if (pendingEditSentence && chinese) {
+    const exactDupe = state.sentences.find(s => s.recordId !== pendingEditSentence.recordId && (s.chineseSentence || '').trim() === chinese);
+    if (exactDupe) warnings.push(`This Chinese sentence already exists as another record${exactDupe.recordId ? ` (${exactDupe.recordId})` : ''}. Saving is blocked until you change it.`);
+  }
+  if (pendingEditSentence && hindi) {
+    const hindiDupe = state.sentences.find(s => s.recordId !== pendingEditSentence.recordId && (s.hindiSentence || '').trim() === hindi && (s.chineseSentence || '').trim() !== chinese);
+    if (hindiDupe) warnings.push(`The same Hindi sentence already exists with a different Chinese translation${hindiDupe.recordId ? ` (${hindiDupe.recordId})` : ''}. Check which version is correct before saving.`);
+  }
+  if (!warnings.length) { box.classList.add('hidden'); box.innerHTML = ''; return; }
+  box.classList.remove('hidden');
+  box.innerHTML = '<strong>Please check before saving:</strong>';
+  const list = document.createElement('ul');
+  warnings.forEach(w => { const li = document.createElement('li'); li.textContent = w; list.appendChild(li); });
+  box.appendChild(list);
+}
+
+function buildEditedPaste() {
+  const lines = [
+    ['HINDI', $('editHindi').value.trim()],
+    ['CHINESE', $('editChinese').value.trim()],
+    ['PINYIN', $('editPinyin').value.trim()],
+    ['ROMAN', $('editRoman').value.trim()],
+    ['EXPLANATION', $('editExplanation').value.trim()],
+    ['CATEGORY', $('editCategory').value.trim() || 'Other'],
+    ['TAGS', $('editTags').value.trim()],
+    ['AI SOURCE', $('editAiSource').value.trim() || 'ChatGPT / Gemini'],
+  ];
+  return lines.map(([label, value]) => `${label}: ${value}`).join('\n');
+}
+
+function submitEdit() {
+  const pin = $('editPinInput').value.trim();
+  if (!pin) { $('editMessage').textContent = 'Enter the teacher PIN.'; return; }
+  if (!pendingEditSentence) { $('editDialog').close(); return; }
+  const original = pendingEditSentence;
+  const edited = {
+    hindiSentence: $('editHindi').value.trim(),
+    chineseSentence: $('editChinese').value.trim(),
+    pinyin: $('editPinyin').value.trim(),
+    romanHindi: $('editRoman').value.trim(),
+    hindiExplanation: $('editExplanation').value.trim(),
+  };
+  const missing = [['Hindi', edited.hindiSentence], ['Chinese', edited.chineseSentence], ['Pinyin', edited.pinyin], ['Roman', edited.romanHindi], ['Explanation', edited.hindiExplanation]]
+    .filter(([, value]) => !value).map(([label]) => label);
+  if (missing.length) { $('editMessage').textContent = `Please fill in: ${missing.join(', ')}.`; return; }
+  const exactDupe = state.sentences.find(s => s.recordId !== original.recordId && (s.chineseSentence || '').trim() === edited.chineseSentence);
+  if (exactDupe) { $('editMessage').textContent = `Blocked: this Chinese sentence already exists as record ${exactDupe.recordId || 'another record'}.`; return; }
+
+  const button = $('confirmEdit');
+  button.disabled = true;
+  $('editMessage').textContent = 'Saving the new version…';
+  try { localStorage.setItem('csbSubmissionPin', pin); } catch (_) {}
+
+  const content = buildEditedPaste();
+  const aiSource = $('editAiSource').value.trim() || 'ChatGPT / Gemini';
+  const beforeIds = new Set(state.sentences.map(s => s.recordId));
+
+  const form = document.createElement('form');
+  form.method = 'POST'; form.action = API_URL; form.target = 'submissionFrame'; form.hidden = true;
+  const fields = { action: 'create', pin, content, aiSource };
+  Object.entries(fields).forEach(([name, value]) => {
+    const field = name === 'content' ? document.createElement('textarea') : document.createElement('input');
+    field.name = name; field.value = value; form.appendChild(field);
+  });
+  document.body.appendChild(form); form.submit(); form.remove();
+
+  let checks = 0;
+  const verify = setInterval(() => {
+    checks += 1;
+    const callback = `verifyEditSave${Date.now()}`;
+    const script = document.createElement('script');
+    window[callback] = data => {
+      delete window[callback]; script.remove();
+      const rows = data && data.success ? data.sentences || [] : [];
+      const added = rows.find(row =>
+        row.recordId &&
+        !beforeIds.has(row.recordId) &&
+        row.hindiSentence === edited.hindiSentence &&
+        row.chineseSentence === edited.chineseSentence &&
+        row.pinyin === edited.pinyin
+      );
+      if (added) {
+        clearInterval(verify);
+        deleteOldRecordAfterEdit(original.recordId, rows);
+      } else if (checks >= 10) {
+        clearInterval(verify); button.disabled = false;
+        $('editMessage').textContent = 'The submission was sent, but confirmation is taking longer than expected. Refresh the page before trying again.';
+      }
+    };
+    script.onerror = () => { delete window[callback]; script.remove(); };
+    script.src = `${API_URL}?action=list&callback=${callback}&_=${Date.now()}`;
+    document.body.appendChild(script);
+  }, 1800);
+}
+
+function deleteOldRecordAfterEdit(oldRecordId, rows) {
+  const button = $('confirmEdit');
+  const pin = $('editPinInput').value.trim();
+  const requestId = `delete-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
+  $('editMessage').textContent = 'New version saved. Removing the old record…';
+
+  const form = document.createElement('form');
+  form.method = 'POST'; form.action = API_URL; form.target = 'submissionFrame'; form.hidden = true;
+  const fields = { action: 'delete', requestId, pin, recordId: oldRecordId };
+  Object.entries(fields).forEach(([name, value]) => {
+    const field = document.createElement('input');
+    field.name = name; field.value = value; form.appendChild(field);
+  });
+  document.body.appendChild(form); form.submit(); form.remove();
+
+  const finishWithRows = (keptRows) => {
+    state.sentences = keptRows;
+    $('sentenceCount').textContent = state.sentences.length;
+    renderSentences();
+  };
+  let checks = 0;
+  const verify = setInterval(() => {
+    checks += 1;
+    const callback = `verifyEditDelete${Date.now()}`;
+    const script = document.createElement('script');
+    window[callback] = data => {
+      delete window[callback]; script.remove();
+      if (data && data.success && data.deletedRecordId === oldRecordId) {
+        clearInterval(verify);
+        finishWithRows(rows.filter(row => row.recordId !== oldRecordId));
+        pendingEditSentence = null;
+        $('editMessage').textContent = 'Changes saved.';
+        setTimeout(() => $('editDialog').close(), 700);
+      } else if (data && data.success === false) {
+        clearInterval(verify);
+        finishWithRows(rows);
+        button.disabled = false;
+        $('editMessage').textContent = `New version saved, but the old record could not be removed (${data.error || 'unknown error'}). Please delete the old record manually.`;
+      } else if (checks >= 20) {
+        clearInterval(verify);
+        finishWithRows(rows);
+        button.disabled = false;
+        $('editMessage').textContent = 'New version saved, but removing the old record was not confirmed. Refresh and check for duplicates before trying again.';
+      }
+    };
+    script.onerror = () => { delete window[callback]; script.remove(); };
+    script.src = `${API_URL}?action=uploadStatus&requestId=${encodeURIComponent(requestId)}&callback=${callback}&_=${Date.now()}`;
+    document.body.appendChild(script);
+  }, 1200);
+}
+
 function createCard(sentence, preview = false) {
   const node = $('cardTemplate').content.firstElementChild.cloneNode(true);
   node.querySelector('.category-pill').textContent = sentence.category || 'Other';
@@ -611,6 +800,9 @@ function createCard(sentence, preview = false) {
   const deleteButton = node.querySelector('.card-delete-button');
   deleteButton.hidden = preview;
   if (!preview) deleteButton.addEventListener('click', () => openDeleteDialog(sentence));
+  const editButton = node.querySelector('.card-edit-button');
+  editButton.hidden = preview;
+  if (!preview) editButton.addEventListener('click', () => openEditDialog(sentence));
   const hindiEl = node.querySelector('.hindi');
   hindiEl.textContent = sentence.hindiSentence;
   hindiEl.setAttribute('lang', 'hi');
@@ -1307,5 +1499,9 @@ $('closeAudioPin').addEventListener('click', () => { pendingModelSave = null; $(
 $('confirmDelete').addEventListener('click', submitDeleteSentence);
 $('deletePinInput').addEventListener('keydown', e => { if (e.key === 'Enter') submitDeleteSentence(); });
 $('closeDelete').addEventListener('click', () => { pendingDeleteSentence = null; $('deleteDialog').close(); });
+$('confirmEdit').addEventListener('click', submitEdit);
+$('editPinInput').addEventListener('keydown', e => { if (e.key === 'Enter') submitEdit(); });
+$('closeEdit').addEventListener('click', () => { pendingEditSentence = null; $('editDialog').close(); });
+['editHindi', 'editChinese', 'editPinyin', 'editRoman', 'editExplanation'].forEach(id => $(id).addEventListener('input', updateEditWarnings));
 initPronunciationLab();
 loadBank();
