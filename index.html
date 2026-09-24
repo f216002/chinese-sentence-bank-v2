@@ -15,9 +15,10 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Noto+Sans+Devanagari:wght@400;500;600&family=Noto+Sans+TC:wght@400;500;700&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="styles.css?v=20260918-1">
+  <link rel="stylesheet" href="styles.css?v=20260925-1">
 </head>
 <body>
+  <a class="skip-link" href="#sentenceGrid">Skip to sentence bank</a>
   <header class="topbar">
     <a class="brand" href="#top" aria-label="Chinese Sentence Bank home">
       <span class="brand-mark" aria-hidden="true">句</span>
@@ -37,6 +38,7 @@
       <div class="eyebrow">LEARN ONE USEFUL SENTENCE AT A TIME</div>
       <h1>Your words.<br><em>Your Chinese.</em></h1>
       <p>Paste a sentence prepared by ChatGPT or Gemini. We will organise the Hindi, Chinese, pinyin and explanation for you.</p>
+      <p class="audience-note">Made for Hindi speakers learning <strong>Traditional Chinese (Taiwanese Mandarin)</strong>.</p>
       <button class="primary-button" id="startButton" type="button">Create a new sentence <span aria-hidden="true">↓</span></button>
       <div class="intro-stats" aria-label="Sentence bank summary">
         <span><strong id="sentenceCount">—</strong> sentences</span>
@@ -105,6 +107,7 @@
         <div class="context-quiz">
           <span class="lab-kicker">USE THE SENTENCE</span>
           <h3>Choose the correct character</h3>
+          <p class="quiz-progress" id="quizProgress"></p>
           <p class="quiz-question" id="quizQuestion"></p>
           <p class="quiz-pinyin" id="quizPinyin"></p>
           <div class="quiz-options" id="quizOptions"></div>
@@ -270,6 +273,19 @@ CATEGORY:
 
   <iframe class="submission-frame" id="submissionFrame" name="submissionFrame" title="Sentence submission response"></iframe>
 
+  <footer class="site-footer">
+    <div class="footer-inner">
+      <div class="footer-about">
+        <strong>My Chinese Sentence Bank</strong>
+        <p>A free learning notebook for Hindi-speaking beginners studying Traditional Chinese (Taiwanese Mandarin). Sentences are saved to the owner's Google Sheet; the PIN is only checked by the Apps Script backend and never stored in this public code.</p>
+      </div>
+      <div class="footer-links">
+        <span>Built for classroom teaching with Google Sheets + GitHub Pages.</span>
+        <a href="mailto:f216002@gmail.com">Contact the teacher</a>
+      </div>
+    </div>
+  </footer>
+
   <template id="cardTemplate">
     <article class="sentence-card">
       <div class="card-top"><span class="category-pill"></span><div class="card-admin"><span class="record-id"></span><button class="card-delete-button" type="button" aria-label="Delete sentence" title="Delete sentence">Delete</button></div></div>
@@ -288,6 +304,6 @@ CATEGORY:
     </article>
   </template>
 
-  <script src="app.js?v=20260922-1"></script>
+  <script src="app.js?v=20260925-1"></script>
 </body>
 </html>

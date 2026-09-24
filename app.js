@@ -611,17 +611,24 @@ function createCard(sentence, preview = false) {
   const deleteButton = node.querySelector('.card-delete-button');
   deleteButton.hidden = preview;
   if (!preview) deleteButton.addEventListener('click', () => openDeleteDialog(sentence));
-  node.querySelector('.hindi').textContent = sentence.hindiSentence;
+  const hindiEl = node.querySelector('.hindi');
+  hindiEl.textContent = sentence.hindiSentence;
+  hindiEl.setAttribute('lang', 'hi');
   const hindiSpeak = node.querySelector('.hindi-speak-button');
   hindiSpeak.addEventListener('click', () => speakHindi(sentence.hindiSentence, hindiSpeak));
   const roman = romanHindiFor(sentence);
   const romanLine = node.querySelector('.roman-hindi');
   romanLine.textContent = roman ? `Roman Hindi: ${roman}` : '';
   romanLine.hidden = !roman;
-  node.querySelector('.chinese').textContent = sentence.chineseSentence;
+  romanLine.setAttribute('lang', 'hi-Latn');
+  const chineseEl = node.querySelector('.chinese');
+  chineseEl.textContent = sentence.chineseSentence;
+  chineseEl.setAttribute('lang', 'zh-Hant');
   node.querySelector('.pinyin').textContent = sentence.pinyin;
-  node.querySelector('.explanation').textContent = sentence.hindiExplanation || 'No explanation added.';
-  const tags = String(sentence.tags || '').split(',').map(t => t.trim()).filter(Boolean);
+  const explanationEl = node.querySelector('.explanation');
+  explanationEl.textContent = sentence.hindiExplanation || 'No explanation added.';
+  explanationEl.setAttribute('lang', 'hi');
+  const tags = [...new Set(String(sentence.tags || '').split(/[,;|]/).map(t => t.trim().toLowerCase()).filter(Boolean))];
   node.querySelector('.tags').innerHTML = tags.map(tag => `<span class="tag"></span>`).join('');
   node.querySelectorAll('.tag').forEach((el, i) => { el.textContent = tags[i]; });
   const speak = node.querySelector('.speak-button');
@@ -677,12 +684,12 @@ const homophoneFamilies = {
   shi4: [
     {char:'是',pinyin:'shì',meaning:'to be / होना',word:'是的',wordPinyin:'shì de',wordMeaning:'yes'},
     {char:'事',pinyin:'shì',meaning:'matter / बात',word:'事情',wordPinyin:'shìqing',wordMeaning:'matter; event'},
-    {char:'市',pinyin:'shì',meaning:'city; market / शहर; बाज़ार',word:'市場',wordPinyin:'shìchǎng',wordMeaning:'market'},
+    {char:'市',pinyin:'shì',meaning:'market / बाज़ार',word:'市場',wordPinyin:'shìchǎng',wordMeaning:'market'},
     {char:'室',pinyin:'shì',meaning:'room / कमरा',word:'教室',wordPinyin:'jiàoshì',wordMeaning:'classroom'},
     {char:'試',pinyin:'shì',meaning:'test; try / परीक्षा; कोशिश',word:'考試',wordPinyin:'kǎoshì',wordMeaning:'exam'},
-    {char:'式',pinyin:'shì',meaning:'style; form / प्रकार',word:'方式',wordPinyin:'fāngshì',wordMeaning:'method'},
+    {char:'式',pinyin:'shì',meaning:'form; pattern / रूप',word:'方式',wordPinyin:'fāngshì',wordMeaning:'method; way'},
     {char:'世',pinyin:'shì',meaning:'world; generation / संसार',word:'世界',wordPinyin:'shìjiè',wordMeaning:'world'},
-    {char:'視',pinyin:'shì',meaning:'look; vision / दृष्टि',word:'電視',wordPinyin:'diànshì',wordMeaning:'television'}
+    {char:'視',pinyin:'shì',meaning:'to see; to view / देखना',word:'電視',wordPinyin:'diànshì',wordMeaning:'television'}
   ],
   yi4: [
     {char:'意',pinyin:'yì',meaning:'meaning; idea / अर्थ; विचार',word:'意思',wordPinyin:'yìsi',wordMeaning:'meaning'},
@@ -719,6 +726,8 @@ let recorder = null;
 let recordedChunks = [];
 let recordedUrl = '';
 let quizIndex = 0;
+let quizAnswered = 0;
+let quizCorrect = 0;
 const standardToneAudio = new Audio();
 let activeToneButton = null;
 
@@ -852,13 +861,19 @@ function renderHomophones(key='shi4') {
   });
 }
 
+function updateQuizProgress() {
+  const total = contextQuestions.length;
+  $('quizProgress').textContent = `Question ${(quizIndex % total) + 1} of ${total} · Score ${quizCorrect}/${quizAnswered}`;
+}
 function renderQuiz() {
   const q=contextQuestions[quizIndex%contextQuestions.length]; $('quizQuestion').textContent=q.sentence; $('quizPinyin').textContent=q.pinyin;
-  $('quizFeedback').textContent=''; const mount=$('quizOptions'); mount.innerHTML='';
+  $('quizFeedback').textContent=''; updateQuizProgress(); const mount=$('quizOptions'); mount.innerHTML='';
   q.options.forEach(option=>{const b=document.createElement('button');b.type='button';b.textContent=option;b.addEventListener('click',()=>{
-    mount.querySelectorAll('button').forEach(x=>x.disabled=true); b.classList.add(option===q.answer?'correct':'wrong');
-    if(option!==q.answer)[...mount.children].find(x=>x.textContent===q.answer)?.classList.add('correct');
-    $('quizFeedback').textContent=option===q.answer?`Correct. ${q.explain}`:`Try to read the complete word. ${q.explain}`;
+    mount.querySelectorAll('button').forEach(x=>x.disabled=true); const right = option===q.answer;
+    b.classList.add(right?'correct':'wrong');
+    if(!right)[...mount.children].find(x=>x.textContent===q.answer)?.classList.add('correct');
+    quizAnswered += 1; if (right) quizCorrect += 1; updateQuizProgress();
+    $('quizFeedback').textContent=right?`Correct. ${q.explain}`:`Try to read the complete word. ${q.explain}`;
     speakLabText(q.sentence.replace('＿＿',q.answer),document.createElement('button'));
   });mount.append(b);});
 }
@@ -946,6 +961,70 @@ function renderSentences() {
   $('emptyState').classList.toggle('hidden', visible.length > 0);
 }
 
+/* Pinyin quality check: every syllable must be a real Hanyu Pinyin syllable
+   and the tone mark must sit on the correct vowel (a > o > e > iu/ui). */
+const PINYIN_BASE = new Set(('a ai an ang ao ba bai ban bang bao bei ben beng bi bian biao bie bin bing bo bu ca cai can cang cao ce cen ceng cha chai chan chang chao che chen cheng chi chong chou chu chua chuai chuan chuang chui chun chuo ci cong cou cu cuan cui cun cuo da dai dan dang dao de dei den deng di dia dian diao die ding diu dong dou du duan dui dun duo e ei en eng er fa fan fang fei fen feng fo fou fu ga gai gan gang gao ge gei gen geng gong gou gu gua guai guan guang gui gun guo ha hai han hang hao he hei hen heng hong hou hu hua huai huan huang hui hun huo ji jia jian jiang jiao jie jin jing jiong jiu ju juan jue jun ka kai kan kang kao ke kei ken keng kong kou ku kua kuai kuan kuang kui kun kuo la lai lan lang lao le lei leng li lia lian liang liao lie lin ling liu long lou lu luan lun luo lv lve ma mai man mang mao me mei men meng mi mian miao mie min ming miu mo mou mu na nai nan nang nao ne nei nen neng ni nian niang niao nie nin ning niu nong nou nu nuan nuo nv nve o ou pa pai pan pang pao pei pen peng pi pian piao pie pin ping po pou pu qi qia qian qiang qiao qie qin qing qiong qiu qu quan que qun ran rang rao re ren reng ri rong rou ru rua ruan rui run ruo sa sai san sang sao se sen seng sha shai shan shang shao she shei shen sheng shi shou shu shua shuai shuan shuang shui shun shuo si song sou su suan sui sun suo ta tai tan tang tao te tei teng ti tian tiao tie ting tong tou tu tuan tui tun tuo wa wai wan wang wei wen weng wo wu xi xia xian xiang xiao xie xin xing xiong xiu xu xuan xue xun ya yan yang yao ye yi yin ying yo yong you yu yuan yue yun za zai zan zang zao ze zei zen zeng zha zhai zhan zhang zhao zhe zhei zhen zheng zhi zhong zhou zhu zhua zhuai zhuan zhuang zhui zhun zhuo zi zong zou zu zuan zui zun zuo').split(' '));
+const TONE_VOWELS = 'āáǎàēéěèīíǐìōóǒòūúǔùǖǘǚǜ';
+const TONE_TO_BASE = { 'ā':'a','á':'a','ǎ':'a','à':'a','ē':'e','é':'e','ě':'e','è':'e','ī':'i','í':'i','ǐ':'i','ì':'i','ō':'o','ó':'o','ǒ':'o','ò':'o','ū':'u','ú':'u','ǔ':'u','ù':'u','ǖ':'v','ǘ':'v','ǚ':'v','ǜ':'v' };
+function stripToneMarks(syllable) {
+  return syllable.toLowerCase().replace(/ü/g, 'v').replace(new RegExp('[' + TONE_VOWELS + ']', 'g'), ch => TONE_TO_BASE[ch] || ch);
+}
+function toneMarkPositionOk(syllable) {
+  const lower = syllable.toLowerCase();
+  let marked = -1;
+  for (let i = 0; i < lower.length; i += 1) {
+    if (TONE_VOWELS.includes(lower[i])) { marked = i; break; }
+  }
+  if (marked === -1) return true; /* no tone mark, e.g. neutral tone */
+  const base = stripToneMarks(syllable);
+  const markedVowel = stripToneMarks(syllable[marked]);
+  let expected;
+  if (base.includes('a')) expected = 'a';
+  else if (base.includes('o')) expected = 'o';
+  else if (base.includes('e')) expected = 'e';
+  else if (base.includes('iu')) expected = 'u';
+  else if (base.includes('ui')) expected = 'i';
+  else expected = markedVowel; /* single-vowel syllable such as shì or lǜ */
+  return markedVowel === expected;
+}
+/* Split a tone-stripped pinyin word (e.g. "zhongwen") into real syllables. */
+function segmentPinyin(base) {
+  const memo = {};
+  function rec(i) {
+    if (i >= base.length) return [];
+    if (Object.prototype.hasOwnProperty.call(memo, i)) return memo[i];
+    for (let len = Math.min(6, base.length - i); len >= 1; len -= 1) {
+      const syl = base.slice(i, i + len);
+      const core = (syl.length > 2 && syl.endsWith('r') && !PINYIN_BASE.has(syl)) ? syl.slice(0, -1) : syl; /* erhua */
+      if (PINYIN_BASE.has(core)) {
+        const rest = rec(i + len);
+        if (rest) return (memo[i] = [syl].concat(rest));
+      }
+    }
+    return (memo[i] = null);
+  }
+  return rec(0);
+}
+function validatePinyin(pinyinText) {
+  const issues = [];
+  const tokens = String(pinyinText || '')
+    .split(/[\s'’]+/)
+    .map(t => t.replace(new RegExp('[^A-Za-z' + TONE_VOWELS + 'üÜ]', 'g'), ''))
+    .filter(Boolean);
+  tokens.forEach(token => {
+    const base = stripToneMarks(token).toLowerCase();
+    const syllables = segmentPinyin(base);
+    if (!syllables) { issues.push(`“${token}” is not valid pinyin`); return; }
+    let pos = 0;
+    syllables.forEach(syl => {
+      const original = token.slice(pos, pos + syl.length);
+      pos += syl.length;
+      if (!toneMarkPositionOk(original)) issues.push(`“${original}” has the tone mark on the wrong vowel`);
+    });
+  });
+  return issues;
+}
+
 function handlePreview() {
   const pastedText = $('pasteInput').value.trim();
   const text = decodeMobileClipboardText(pastedText);
@@ -954,8 +1033,35 @@ function handlePreview() {
   const parsed = parsePaste(text);
   const missing = [['Hindi',parsed.hindiSentence],['Chinese',parsed.chineseSentence],['Pinyin',parsed.pinyin],['Roman',parsed.romanHindi],['Explanation',parsed.hindiExplanation]].filter(([,v]) => !v).map(([k]) => k);
   if (missing.length) { $('parseMessage').textContent = `Please add these labelled parts: ${missing.join(', ')}.`; return; }
-  state.preview = parsed; $('parseMessage').textContent = '';
-  const mount = $('previewCard'); mount.innerHTML = ''; mount.appendChild(createCard(parsed, true));
+  /* Duplicate check against the loaded bank. */
+  const chinese = parsed.chineseSentence.trim();
+  const hindi = parsed.hindiSentence.trim();
+  const exactDupe = state.sentences.find(s => (s.chineseSentence || '').trim() === chinese);
+  if (exactDupe) {
+    $('parseMessage').textContent = `This Chinese sentence is already in your bank${exactDupe.recordId ? ` (${exactDupe.recordId})` : ''}. Saving it again would create a duplicate.`;
+    return;
+  }
+  const hindiDupe = state.sentences.find(s => (s.hindiSentence || '').trim() === hindi && (s.chineseSentence || '').trim() !== chinese);
+  /* Pinyin quality check. */
+  const pinyinIssues = validatePinyin(parsed.pinyin);
+  const warnings = [];
+  if (hindiDupe) warnings.push(`The same Hindi sentence already exists with a different Chinese translation${hindiDupe.recordId ? ` (${hindiDupe.recordId})` : ''}. Check which version is correct before saving.`);
+  pinyinIssues.slice(0, 8).forEach(issue => warnings.push(`Pinyin: ${issue}.`));
+  if (pinyinIssues.length > 8) warnings.push(`…and ${pinyinIssues.length - 8} more pinyin issues.`);
+  if (!/^[A-ZĀÁǍÀĒÉĚÈĪÍǏÌŌÓǑÒŪÚǓÙǕǗǙǛ]/.test(parsed.pinyin.trim())) warnings.push('Pinyin: the first syllable usually starts with a capital letter.');
+  state.preview = parsed; state.previewWarnings = warnings; $('parseMessage').textContent = '';
+  const mount = $('previewCard'); mount.innerHTML = '';
+  if (warnings.length) {
+    const box = document.createElement('div');
+    box.className = 'preview-warnings';
+    box.setAttribute('role', 'status');
+    box.innerHTML = '<strong>Please check before saving:</strong>';
+    const list = document.createElement('ul');
+    warnings.forEach(w => { const li = document.createElement('li'); li.textContent = w; list.appendChild(li); });
+    box.appendChild(list);
+    mount.appendChild(box);
+  }
+  mount.appendChild(createCard(parsed, true));
   $('previewPanel').classList.remove('hidden'); $('previewPanel').scrollIntoView({behavior:'smooth',block:'start'});
 }
 
@@ -970,11 +1076,53 @@ function receiveBank(data) {
   $('sentenceCount').textContent = state.sentences.length; $('categoryCount').textContent = state.categories.length;
   $('apiStatus').className = 'live-status ready'; $('apiStatus').innerHTML = '<i></i> Google Sheet connected';
   renderFilters(); renderSentences();
+  saveBankCache();
 }
 
-function showApiError(message) {
+function showApiError(message, canRetry) {
   $('apiStatus').className = 'live-status error'; $('apiStatus').innerHTML = '<i></i> Connection problem';
-  $('sentenceGrid').innerHTML = `<div class="loading-card">${message} Refresh the page to try again.</div>`;
+  const grid = $('sentenceGrid');
+  grid.innerHTML = '';
+  const card = document.createElement('div');
+  card.className = 'loading-card';
+  card.textContent = message + ' ';
+  if (canRetry) {
+    const button = document.createElement('button');
+    button.type = 'button'; button.className = 'secondary-button'; button.textContent = 'Try again';
+    button.addEventListener('click', () => {
+      grid.innerHTML = '<div class="loading-card">Loading your sentences…</div>';
+      loadBank();
+    });
+    card.appendChild(button);
+  } else {
+    card.appendChild(document.createTextNode('Refresh the page to try again.'));
+  }
+  grid.appendChild(card);
+}
+
+/* Last successful bank data, kept on this device as an offline fallback. */
+const BANK_CACHE_KEY = 'csbCachedBank';
+function saveBankCache() {
+  try {
+    localStorage.setItem(BANK_CACHE_KEY, JSON.stringify({
+      settings: state.settings, sentences: state.sentences,
+      categories: state.categories, savedAt: Date.now()
+    }));
+  } catch (_) {}
+}
+function loadBankCache() {
+  try {
+    const data = JSON.parse(localStorage.getItem(BANK_CACHE_KEY));
+    if (!data || !Array.isArray(data.sentences)) return null;
+    return data;
+  } catch (_) { return null; }
+}
+function describeCacheAge(savedAt) {
+  const minutes = Math.max(0, Math.round((Date.now() - (savedAt || Date.now())) / 60000));
+  if (minutes < 1) return 'just now';
+  if (minutes < 60) return minutes + ' min ago';
+  const hours = Math.round(minutes / 60);
+  return hours < 24 ? hours + ' h ago' : Math.round(hours / 24) + ' d ago';
 }
 
 function openPinDialog() {
@@ -1036,12 +1184,50 @@ function submitSentence() {
   }, 1800);
 }
 
-function loadBank() {
-  window.sentenceBankCallback = receiveBank;
+function loadBank(attempt = 1) {
+  const MAX_ATTEMPTS = 3;
+  const TIMEOUT_MS = 9000;
+  window.__sentenceBankLoaded = false;
+  $('apiStatus').className = 'live-status';
+  $('apiStatus').innerHTML = attempt > 1 ? `<i></i> Retrying… (${attempt}/${MAX_ATTEMPTS})` : '<i></i> Connecting';
+  const callback = `sentenceBankCallback${Date.now()}${Math.random().toString(36).slice(2, 8)}`;
   const script = document.createElement('script');
-  script.src = `${API_URL}?action=list&callback=sentenceBankCallback&_=${Date.now()}`;
-  script.onerror = () => showApiError('Could not reach Google Sheets.'); document.body.appendChild(script);
-  setTimeout(() => { if (!window.__sentenceBankLoaded) showApiError('Google Sheets took too long to respond.'); }, 12000);
+  let finished = false;
+  const finish = (fn) => { if (finished) return; finished = true; clearTimeout(timer); delete window[callback]; script.remove(); fn(); };
+  const timer = setTimeout(() => finish(() => handleBankFailure(attempt, MAX_ATTEMPTS, 'Google Sheets took too long to respond.')), TIMEOUT_MS);
+  window[callback] = data => finish(() => {
+    if (!data || !data.success) { handleBankFailure(attempt, MAX_ATTEMPTS, 'The Google Sheets API returned an error.'); return; }
+    receiveBank(data);
+  });
+  script.onerror = () => finish(() => handleBankFailure(attempt, MAX_ATTEMPTS, 'Could not reach Google Sheets.'));
+  script.src = `${API_URL}?action=list&callback=${callback}&_=${Date.now()}`;
+  document.body.appendChild(script);
+}
+
+function handleBankFailure(attempt, maxAttempts, message) {
+  if (attempt < maxAttempts) {
+    setTimeout(() => loadBank(attempt + 1), attempt * 2000);
+    return;
+  }
+  const cached = loadBankCache();
+  if (cached) {
+    receiveBank({ success: true, settings: cached.settings, sentences: cached.sentences });
+    $('apiStatus').className = 'live-status error';
+    $('apiStatus').innerHTML = `<i></i> Showing saved copy (${describeCacheAge(cached.savedAt)})`;
+    const notice = document.createElement('div');
+    notice.className = 'cache-notice';
+    notice.innerHTML = 'You are offline. Showing the last saved copy of your sentence bank. ';
+    const button = document.createElement('button');
+    button.type = 'button'; button.className = 'text-button'; button.textContent = 'Try again';
+    button.addEventListener('click', () => {
+      $('sentenceGrid').innerHTML = '<div class="loading-card">Loading your sentences…</div>';
+      loadBank();
+    });
+    notice.appendChild(button);
+    $('sentenceGrid').prepend(notice);
+    return;
+  }
+  showApiError(message + ' ', true);
 }
 
 $('startButton').addEventListener('click', () => $('createPrompt').scrollIntoView({behavior:'smooth'}));
