@@ -15,7 +15,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Noto+Sans+Devanagari:wght@400;500;600&family=Noto+Sans+TC:wght@400;500;700&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="styles.css?v=20260925-1">
+  <link rel="stylesheet" href="styles.css?v=20260925-2">
 </head>
 <body>
   <a class="skip-link" href="#sentenceGrid">Skip to sentence bank</a>
@@ -271,6 +271,31 @@ CATEGORY:
     <div class="parse-message" id="deleteMessage" role="status" aria-live="polite"></div>
   </dialog>
 
+  <dialog id="editDialog">
+    <button class="dialog-close" id="closeEdit" aria-label="Close edit window">×</button>
+    <span class="step edit-step">EDIT SENTENCE</span>
+    <h2>Edit sentence</h2>
+    <p class="edit-note" id="editRecordNote"></p>
+    <p class="edit-audio-note hidden" id="editAudioNote">This sentence has a saved teacher recording. Editing creates a new record, so the recording will no longer be attached — you can record it again afterwards.</p>
+    <div class="edit-fields">
+      <label class="edit-field">Hindi sentence<textarea id="editHindi" lang="hi" rows="2"></textarea></label>
+      <label class="edit-field">Chinese sentence<input id="editChinese" lang="zh-Hant" autocomplete="off"></label>
+      <label class="edit-field">Pinyin<input id="editPinyin" autocomplete="off"></label>
+      <label class="edit-field">Roman Hindi<input id="editRoman" lang="hi-Latn" autocomplete="off"></label>
+      <label class="edit-field">Hindi explanation<textarea id="editExplanation" lang="hi" rows="2"></textarea></label>
+      <div class="edit-row">
+        <label class="edit-field">Category<input id="editCategory" list="editCategoryList" autocomplete="off"></label>
+        <label class="edit-field">Tags<input id="editTags" autocomplete="off" placeholder="comma, separated"></label>
+      </div>
+      <label class="edit-field">AI source<input id="editAiSource" autocomplete="off"></label>
+    </div>
+    <datalist id="editCategoryList"></datalist>
+    <div class="preview-warnings hidden" id="editWarnings" role="status"></div>
+    <label class="pin-field">Teacher PIN<input id="editPinInput" type="password" inputmode="numeric" autocomplete="off" placeholder="Enter PIN"></label>
+    <button class="primary-button full-button" id="confirmEdit" type="button">Save changes</button>
+    <div class="parse-message" id="editMessage" role="status" aria-live="polite"></div>
+  </dialog>
+
   <iframe class="submission-frame" id="submissionFrame" name="submissionFrame" title="Sentence submission response"></iframe>
 
   <footer class="site-footer">
@@ -288,7 +313,7 @@ CATEGORY:
 
   <template id="cardTemplate">
     <article class="sentence-card">
-      <div class="card-top"><span class="category-pill"></span><div class="card-admin"><span class="record-id"></span><button class="card-delete-button" type="button" aria-label="Delete sentence" title="Delete sentence">Delete</button></div></div>
+      <div class="card-top"><span class="category-pill"></span><div class="card-admin"><span class="record-id"></span><button class="card-edit-button" type="button" aria-label="Edit sentence" title="Edit sentence">Edit</button><button class="card-delete-button" type="button" aria-label="Delete sentence" title="Delete sentence">Delete</button></div></div>
       <div class="hindi-row"><p class="hindi"></p><button class="hindi-speak-button" type="button" aria-label="Play Hindi pronunciation">▶</button></div>
       <p class="roman-hindi"></p>
       <div class="chinese-row"><h3 class="chinese"></h3><button class="speak-button" type="button" aria-label="Play Taiwanese Mandarin pronunciation">▶</button></div>
@@ -304,6 +329,6 @@ CATEGORY:
     </article>
   </template>
 
-  <script src="app.js?v=20260925-1"></script>
+  <script src="app.js?v=20260925-2"></script>
 </body>
 </html>
