@@ -46,7 +46,7 @@ let pendingDeleteSentence = null;
 let pendingEditSentence = null;
 
 function parsePaste(text) {
-  const labels = ['HINDI', 'CHINESE', 'PINYIN', 'ROMAN', 'EXPLANATION', 'CATEGORY', 'TAGS', 'AI SOURCE'];
+  const labels = ['HINDI', 'CHINESE', 'PINYIN', 'ROMAN', 'EXPLANATION', 'CATEGORY', 'TAGS', 'AI SOURCE', 'LESSON', 'SECTION', 'SPEAKER', 'POS', 'ZHUYIN'];
   const found = {};
   const pattern = new RegExp(`(?:^|\\n)\\s*(?:\\*\\*)?\\s*(${labels.join('|')})\\s*:?\\s*(?:\\*\\*)?\\s*:?\\s*`, 'gi');
   const matches = [...text.matchAll(pattern)];
@@ -60,7 +60,9 @@ function parsePaste(text) {
     hindiSentence: found.HINDI || '', chineseSentence: found.CHINESE || '',
     pinyin: found.PINYIN || '', romanHindi: found.ROMAN || '', hindiExplanation: found.EXPLANATION || '',
     category: found.CATEGORY || 'Other', tags: found.TAGS || '',
-    aiSource: found['AI SOURCE'] || 'ChatGPT / Gemini', originalPaste: text
+    aiSource: found['AI SOURCE'] || 'ChatGPT / Gemini', originalPaste: text,
+    lesson: found.LESSON || '', section: found.SECTION || '', speaker: found.SPEAKER || '',
+    pos: found.POS || '', zhuyin: found.ZHUYIN || ''
   };
 }
 
@@ -674,6 +676,15 @@ function buildEditedPaste() {
     ['TAGS', $('editTags').value.trim()],
     ['AI SOURCE', $('editAiSource').value.trim() || 'ChatGPT / Gemini'],
   ];
+  /* Keep course labels so editing a lesson record does not drop it from the course view. */
+  if (pendingEditSentence) {
+    const meta = courseMeta(pendingEditSentence);
+    if (meta.lesson) lines.push(['LESSON', meta.lesson]);
+    if (meta.section) lines.push(['SECTION', meta.section]);
+    if (meta.speaker) lines.push(['SPEAKER', meta.speaker]);
+    if (meta.pos) lines.push(['POS', meta.pos]);
+    if (meta.zhuyin) lines.push(['ZHUYIN', meta.zhuyin]);
+  }
   return lines.map(([label, value]) => `${label}: ${value}`).join('\n');
 }
 
@@ -1141,8 +1152,28 @@ function updateTopicPicker() {
   $('topicSummary').textContent = selected === total ? 'All topics' : selected === 0 ? 'Any topic' : `${selected} topics selected`;
 }
 
+/* Course metadata: parsed from the record's original paste text so it works
+   no matter how the backend stores the new LESSON/SECTION/SPEAKER/POS/ZHUYIN labels. */
+const courseMetaCache = new Map();
+function courseMeta(sentence) {
+  if (!sentence) return { lesson: '', section: '', speaker: '', pos: '', zhuyin: '' };
+  const key = sentence.recordId || sentence.originalPaste || '';
+  if (courseMetaCache.has(key)) return courseMetaCache.get(key);
+  const parsed = parsePaste(sentence.originalPaste || '');
+  const meta = {
+    lesson: String(parsed.lesson || '').trim(),
+    section: String(parsed.section || '').trim(),
+    speaker: String(parsed.speaker || '').trim(),
+    pos: String(parsed.pos || '').trim(),
+    zhuyin: String(parsed.zhuyin || '').trim()
+  };
+  courseMetaCache.set(key, meta);
+  return meta;
+}
+
 function renderSentences() {
   const visible = state.sentences.filter(s => {
+    if (courseMeta(s).lesson) return false; /* course records live in the course view */
     const haystack = normalizeSearchText([s.recordId,s.hindiSentence,romanHindiFor(s),s.chineseSentence,s.pinyin,s.hindiExplanation,s.category,s.tags].join(' '));
     const topicMatch = state.selectedCategories.size === 0 || [...sentenceTopics(s)].some(topic => state.selectedCategories.has(topic));
     return matchesKeywordExpression(haystack) && topicMatch;
@@ -1267,7 +1298,7 @@ function receiveBank(data) {
   document.title = state.settings.bankName || 'My Chinese Sentence Bank';
   $('sentenceCount').textContent = state.sentences.length; $('categoryCount').textContent = state.categories.length;
   $('apiStatus').className = 'live-status ready'; $('apiStatus').innerHTML = '<i></i> Google Sheet connected';
-  renderFilters(); renderSentences();
+  renderFilters(); renderSentences(); renderCourse();
   saveBankCache();
 }
 
@@ -1505,3 +1536,495 @@ $('closeEdit').addEventListener('click', () => { pendingEditSentence = null; $('
 ['editHindi', 'editChinese', 'editPinyin', 'editRoman', 'editExplanation'].forEach(id => $(id).addEventListener('input', updateEditWarnings));
 initPronunciationLab();
 loadBank();
+
+/* ================= Course module: 當代中文課程 ================= */
+const COURSE_LESSONS = [
+  { n: 1, zh: '請問，到師大怎麼走？', en: 'Excuse Me. How Do You Get to Shida?', topic: '問路' },
+  { n: 2, zh: '還是坐捷運吧！', en: 'Take the MRT Instead!', topic: '交通' },
+  { n: 3, zh: '你的中文進步了！', en: 'Your Chinese Has Improved!', topic: '學習' },
+  { n: 4, zh: '我打工，我教法文', en: 'I Work Part-Time Teaching French', topic: '打工' },
+  { n: 5, zh: '吃喜酒', en: 'Attending a Wedding Banquet', topic: '婚禮' },
+  { n: 6, zh: '我打算搬到學校附近', en: 'I Plan to Move Near the School', topic: '搬家' },
+  { n: 7, zh: '垃圾車來了！', en: 'The Garbage Truck Is Here!', topic: '環保' },
+  { n: 8, zh: '學功夫', en: 'Learning Kung Fu', topic: '運動' },
+  { n: 9, zh: '那個城市好漂亮', en: 'That City Is So Beautiful', topic: '旅遊' },
+  { n: 10, zh: '歡迎到我家來包餃子', en: 'Welcome to My Home for Dumplings', topic: '飲食' },
+  { n: 11, zh: '台灣好玩的地方真多', en: 'Taiwan Has So Many Fun Places', topic: '觀光' },
+  { n: 12, zh: '怎麼吃才健康？', en: 'How to Eat Healthily?', topic: '健康' },
+  { n: 13, zh: '我的手機掉了', en: 'I Lost My Cell Phone', topic: '意外' },
+  { n: 14, zh: '我要開始找工作了', en: "I'm Going to Start Job Hunting", topic: '求職' },
+  { n: 15, zh: '過春節', en: 'Celebrating Spring Festival', topic: '節慶' }
+];
+const COURSE_TABS = ['課文', '生詞', '語法', '練習', '文化'];
+const COURSE_PACK_LESSONS = [1, 2, 3];
+const courseState = { lesson: 0, tab: '課文' };
+
+function isCourseUnlocked() {
+  try { return sessionStorage.getItem('csbCourseUnlocked') === '1'; } catch (_) { return false; }
+}
+
+function lessonRecords(n) {
+  const key = String(n);
+  return state.sentences.filter(s => courseMeta(s).lesson === key);
+}
+
+function renderCourse() {
+  const lock = $('courseLock'), body = $('courseBody');
+  if (!lock || !body) return;
+  if (!isCourseUnlocked()) {
+    lock.classList.remove('hidden'); body.classList.add('hidden');
+    return;
+  }
+  lock.classList.add('hidden'); body.classList.remove('hidden');
+  if (courseState.lesson > 0) renderLessonView();
+  else renderLessonGrid();
+}
+
+function unlockCourse() {
+  const pin = $('coursePinInput').value.trim();
+  const msg = $('courseLockMessage');
+  if (!pin) { msg.textContent = '請輸入老師 PIN。'; return; }
+  let remembered = '';
+  try { remembered = localStorage.getItem('csbSubmissionPin') || ''; } catch (_) {}
+  if (remembered && pin !== remembered) { msg.textContent = 'PIN 不正確，請再試一次。'; return; }
+  try { sessionStorage.setItem('csbCourseUnlocked', '1'); } catch (_) {}
+  msg.textContent = '';
+  renderCourse();
+}
+
+function renderLessonGrid() {
+  $('lessonView').classList.add('hidden');
+  const grid = $('lessonGrid');
+  grid.classList.remove('hidden');
+  grid.innerHTML = '';
+  COURSE_LESSONS.forEach(lesson => {
+    const recs = lessonRecords(lesson.n);
+    const hasPack = COURSE_PACK_LESSONS.includes(lesson.n);
+    const card = document.createElement('button');
+    card.type = 'button';
+    card.className = 'lesson-card' + (recs.length ? '' : ' lesson-card-empty');
+    card.innerHTML = `
+      <span class="lesson-num">第 ${lesson.n} 課</span>
+      <span class="lesson-zh" lang="zh-Hant">${lesson.zh}</span>
+      <span class="lesson-en">${lesson.en}</span>
+      <span class="lesson-topic">${lesson.topic}</span>
+      <span class="lesson-status">${recs.length ? `已匯入 ${recs.length} 條` : (hasPack ? '尚未匯入' : '準備中')}</span>`;
+    card.setAttribute('aria-label', `第 ${lesson.n} 課 ${lesson.zh}`);
+    if (recs.length) {
+      card.addEventListener('click', () => { courseState.lesson = lesson.n; courseState.tab = '課文'; renderLessonView(); });
+    } else {
+      card.disabled = true;
+      card.title = hasPack ? '請先在課程管理匯入內容包' : '內容準備中';
+    }
+    grid.appendChild(card);
+  });
+}
+
+function openLesson(n) {
+  courseState.lesson = n; courseState.tab = '課文';
+  renderLessonView();
+  $('courseSection').scrollIntoView({ behavior: 'smooth' });
+}
+
+function renderLessonView() {
+  const n = courseState.lesson;
+  const lesson = COURSE_LESSONS.find(l => l.n === n);
+  if (!lesson) { renderLessonGrid(); return; }
+  $('lessonGrid').classList.add('hidden');
+  const view = $('lessonView');
+  view.classList.remove('hidden');
+  const recs = lessonRecords(n);
+  const bySection = {};
+  recs.forEach(s => {
+    const sec = courseMeta(s).section || '課文';
+    (bySection[sec] = bySection[sec] || []).push(s);
+  });
+
+  const header = $('lessonHeader');
+  const goals = bySection['目標'] || [];
+  header.innerHTML = `
+    <div class="lesson-header-top"><span class="lesson-num">第 ${lesson.n} 課</span><span class="lesson-topic">${lesson.topic}</span></div>
+    <h3 class="lesson-header-zh" lang="zh-Hant">${lesson.zh}</h3>
+    <p class="lesson-header-en">${lesson.en}</p>
+    ${goals.map(s => `<div class="lesson-goals"><strong>學習目標</strong><p lang="hi">${escapeHtml(s.hindiExplanation || s.hindiSentence || '')}</p></div>`).join('')}`;
+
+  const tabs = $('lessonTabs');
+  tabs.innerHTML = '';
+  COURSE_TABS.forEach(tab => {
+    const count = (bySection[tab] || []).length;
+    const button = document.createElement('button');
+    button.type = 'button';
+    button.className = 'lesson-tab' + (courseState.tab === tab ? ' active' : '');
+    button.setAttribute('role', 'tab');
+    button.setAttribute('aria-selected', courseState.tab === tab ? 'true' : 'false');
+    button.textContent = `${tab}${count ? ` ${count}` : ''}`;
+    button.addEventListener('click', () => { courseState.tab = tab; renderLessonView(); });
+    tabs.appendChild(button);
+  });
+
+  const content = $('lessonContent');
+  content.innerHTML = '';
+  const tabRecs = bySection[courseState.tab] || [];
+  if (!tabRecs.length) {
+    content.innerHTML = '<div class="loading-card">這個單元還沒有內容。</div>';
+    return;
+  }
+  if (courseState.tab === '課文') renderTextTab(content, tabRecs);
+  else if (courseState.tab === '生詞') renderVocabTab(content, tabRecs);
+  else if (courseState.tab === '語法') renderGrammarTab(content, tabRecs, n);
+  else renderInfoTab(content, tabRecs, courseState.tab);
+}
+
+function escapeHtml(text) {
+  return String(text || '').replace(/[&<>"']/g, ch => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[ch]));
+}
+
+function tagList(s) {
+  return String(s.tags || '').split(/[,;|]/).map(t => t.trim()).filter(Boolean);
+}
+
+/* ---- 課文：對話／短文 ---- */
+function textGroupName(s) {
+  const tags = tagList(s);
+  for (const name of ['對話一', '對話二', '對話三', '短文']) {
+    if (tags.includes(name)) return name;
+  }
+  return '課文';
+}
+
+function renderTextTab(content, recs) {
+  const groups = {};
+  recs.forEach(s => {
+    const g = textGroupName(s);
+    (groups[g] = groups[g] || []).push(s);
+  });
+  Object.keys(groups).sort((a, b) => {
+    const order = ['對話一', '對話二', '對話三', '短文', '課文'];
+    return order.indexOf(a) - order.indexOf(b);
+  }).forEach(groupName => {
+    const lines = groups[groupName];
+    const section = document.createElement('div');
+    section.className = 'text-group';
+    const head = document.createElement('div');
+    head.className = 'text-group-head';
+    const title = document.createElement('h4');
+    title.textContent = groupName;
+    const playButton = document.createElement('button');
+    playButton.type = 'button';
+    playButton.className = 'secondary-button text-play-button';
+    playButton.textContent = '▶ 連播';
+    playButton.setAttribute('aria-label', `連播${groupName}`);
+    playButton.addEventListener('click', () => playTextGroup(lines, playButton));
+    head.appendChild(title); head.appendChild(playButton);
+    section.appendChild(head);
+    lines.forEach(s => {
+      const card = createCard(s);
+      const speaker = courseMeta(s).speaker;
+      if (speaker) {
+        const badge = document.createElement('div');
+        badge.className = 'script-speaker';
+        badge.textContent = speaker;
+        badge.setAttribute('lang', 'zh-Hant');
+        card.insertBefore(badge, card.firstChild);
+      }
+      section.appendChild(card);
+    });
+    content.appendChild(section);
+  });
+}
+
+/* ---- 生詞：緊湊單字卡 ---- */
+function vocabGroupName(s) {
+  const tags = tagList(s);
+  if (tags.includes('生詞一')) return '生詞一';
+  if (tags.includes('生詞二')) return '生詞二';
+  return '生詞';
+}
+
+function renderVocabTab(content, recs) {
+  const groups = {};
+  recs.forEach(s => {
+    const g = vocabGroupName(s);
+    (groups[g] = groups[g] || []).push(s);
+  });
+  ['生詞一', '生詞二', '生詞'].filter(g => groups[g]).forEach(groupName => {
+    const head = document.createElement('h4');
+    head.className = 'text-group-head-title';
+    head.textContent = `${groupName}（${groups[groupName].length}）`;
+    content.appendChild(head);
+    const grid = document.createElement('div');
+    grid.className = 'vocab-grid';
+    groups[groupName].forEach(s => grid.appendChild(createVocabCard(s)));
+    content.appendChild(grid);
+  });
+}
+
+function createVocabCard(sentence) {
+  const meta = courseMeta(sentence);
+  const node = document.createElement('div');
+  node.className = 'vocab-card';
+  node.innerHTML = `
+    <div class="vocab-top"><span class="vocab-word" lang="zh-Hant"></span>${meta.pos ? `<span class="vocab-pos">${escapeHtml(meta.pos)}</span>` : ''}</div>
+    <div class="vocab-pinyin"></div>
+    ${meta.zhuyin ? `<div class="vocab-zhuyin" lang="zh-Hant"></div>` : ''}
+    <div class="vocab-hindi-row"><span class="vocab-hindi" lang="hi"></span><button type="button" class="icon-button vocab-hindi-speak" aria-label="Play Hindi">🔊</button></div>
+    <div class="vocab-roman"></div>
+    <div class="vocab-example"></div>
+    <div class="vocab-actions">
+      <button type="button" class="icon-button vocab-speak" aria-label="Play Chinese" title="Play Chinese">🔊</button>
+      <button type="button" class="icon-button card-record-button" aria-label="Record your voice" title="Record">🎙</button>
+      <button type="button" class="icon-button card-play-button" aria-label="Play your recording" title="Play recording">▶</button>
+      <button type="button" class="icon-button card-save-model-button" aria-label="Save as teacher model" title="Save as teacher model">💾</button>
+      <button type="button" class="icon-button vocab-edit" aria-label="Edit" title="Edit">✏️</button>
+    </div>
+    <div class="card-recording-status vocab-status" aria-live="polite"></div>`;
+  node.querySelector('.vocab-word').textContent = sentence.chineseSentence || '';
+  node.querySelector('.vocab-pinyin').textContent = sentence.pinyin || '';
+  const zhuyinEl = node.querySelector('.vocab-zhuyin');
+  if (zhuyinEl) zhuyinEl.textContent = meta.zhuyin;
+  node.querySelector('.vocab-hindi').textContent = sentence.hindiSentence || '';
+  const roman = romanHindiFor(sentence);
+  const romanEl = node.querySelector('.vocab-roman');
+  romanEl.textContent = roman || '';
+  romanEl.hidden = !roman;
+  romanEl.setAttribute('lang', 'hi-Latn');
+  const exampleEl = node.querySelector('.vocab-example');
+  exampleEl.textContent = sentence.hindiExplanation || '';
+  exampleEl.hidden = !sentence.hindiExplanation;
+  node.querySelector('.vocab-hindi-speak').addEventListener('click', e => speakHindi(sentence.hindiSentence, e.currentTarget));
+  node.querySelector('.vocab-speak').addEventListener('click', e => playSentenceModel(sentence, e.currentTarget));
+  node.querySelector('.card-record-button').addEventListener('click', () => toggleCardRecording(node, sentence, false));
+  node.querySelector('.card-play-button').addEventListener('click', () => {
+    const recording = recordingForSentence(sentence);
+    if (recording) new Audio(recording.url).play();
+  });
+  node.querySelector('.card-save-model-button').addEventListener('click', () => openAudioPinDialog(sentence, node));
+  node.querySelector('.vocab-edit').addEventListener('click', () => openEditDialog(sentence));
+  return node;
+}
+
+/* ---- 語法：句型＋例句 ---- */
+function renderGrammarTab(content, recs, lessonNum) {
+  const groups = {};
+  recs.forEach(s => {
+    const tags = tagList(s);
+    const key = tags.find(t => new RegExp(`^L${lessonNum}-G\\d+$`, 'i').test(t)) || '其他';
+    (groups[key] = groups[key] || []).push(s);
+  });
+  Object.keys(groups).sort().forEach(key => {
+    const items = groups[key];
+    const point = items.find(s => tagList(s).some(t => t === '句型')) || items[0];
+    const examples = items.filter(s => s !== point);
+    const block = document.createElement('div');
+    block.className = 'grammar-block';
+    const head = document.createElement('div');
+    head.className = 'grammar-point';
+    head.innerHTML = `
+      <div class="grammar-pattern" lang="zh-Hant"></div>
+      <div class="grammar-pinyin"></div>
+      <div class="grammar-hindi" lang="hi"></div>
+      <div class="grammar-function" lang="hi"></div>`;
+    head.querySelector('.grammar-pattern').textContent = point.chineseSentence || '';
+    head.querySelector('.grammar-pinyin').textContent = point.pinyin || '';
+    head.querySelector('.grammar-hindi').textContent = point.hindiSentence || '';
+    const funcEl = head.querySelector('.grammar-function');
+    funcEl.textContent = point.hindiExplanation || '';
+    funcEl.hidden = !point.hindiExplanation;
+    block.appendChild(head);
+    examples.forEach(s => block.appendChild(createCard(s)));
+    content.appendChild(block);
+  });
+}
+
+/* ---- 練習／文化：說明卡 ---- */
+function renderInfoTab(content, recs, tabName) {
+  recs.forEach(s => {
+    const card = document.createElement('div');
+    card.className = 'info-card';
+    card.innerHTML = `
+      <div class="info-kicker">${tabName}</div>
+      <h4 class="info-zh" lang="zh-Hant"></h4>
+      <p class="info-hi" lang="hi"></p>
+      <p class="info-explain" lang="hi"></p>
+      <div class="info-actions"><button type="button" class="icon-button info-edit" aria-label="Edit" title="Edit">✏️</button></div>`;
+    card.querySelector('.info-zh').textContent = s.chineseSentence || '';
+    card.querySelector('.info-hi').textContent = s.hindiSentence || '';
+    const explainEl = card.querySelector('.info-explain');
+    explainEl.textContent = s.hindiExplanation || '';
+    explainEl.hidden = !s.hindiExplanation;
+    card.querySelector('.info-edit').addEventListener('click', () => openEditDialog(s));
+    content.appendChild(card);
+  });
+}
+
+/* ---- 課文連播 ---- */
+let textPlay = { playing: false, queue: [], index: 0 };
+function stopTextPlay() {
+  textPlay.playing = false;
+  try { speechSynthesis.cancel(); } catch (_) {}
+  document.querySelectorAll('.text-play-button.text-playing').forEach(b => {
+    b.classList.remove('text-playing');
+    b.textContent = '▶ 連播';
+  });
+}
+function fetchTeacherAudioUrl(sentence) {
+  return new Promise(resolve => {
+    if (!sentence.standardAudioUrl) { resolve(null); return; }
+    const cached = teacherAudioCache.get(sentence.recordId);
+    if (cached) { resolve(cached); return; }
+    const callback = `textPlayAudio${Date.now()}${Math.random().toString(36).slice(2, 8)}`;
+    const script = document.createElement('script');
+    const timer = setTimeout(() => { cleanup(); resolve(null); }, 8000);
+    const cleanup = () => { clearTimeout(timer); delete window[callback]; script.remove(); };
+    window[callback] = data => {
+      cleanup();
+      if (!data || !data.success || !data.audioBase64) { resolve(null); return; }
+      try {
+        const binary = atob(data.audioBase64);
+        const bytes = new Uint8Array(binary.length);
+        for (let i = 0; i < binary.length; i += 1) bytes[i] = binary.charCodeAt(i);
+        const url = URL.createObjectURL(new Blob([bytes], { type: data.mimeType || 'audio/webm' }));
+        teacherAudioCache.set(sentence.recordId, url);
+        resolve(url);
+      } catch (_) { resolve(null); }
+    };
+    script.onerror = () => { cleanup(); resolve(null); };
+    script.src = `${API_URL}?action=audio&recordId=${encodeURIComponent(sentence.recordId)}&callback=${callback}&_=${Date.now()}`;
+    document.body.appendChild(script);
+  });
+}
+function playTextGroup(lines, button) {
+  if (textPlay.playing) { stopTextPlay(); return; }
+  stopTextPlay();
+  textPlay = { playing: true, queue: lines.slice(), index: 0 };
+  button.classList.add('text-playing');
+  button.textContent = '⏹ 停止';
+  playNextTextLine();
+}
+async function playNextTextLine() {
+  if (!textPlay.playing) return;
+  if (textPlay.index >= textPlay.queue.length) { stopTextPlay(); return; }
+  const s = textPlay.queue[textPlay.index];
+  const audioUrl = await fetchTeacherAudioUrl(s);
+  if (!textPlay.playing) return;
+  if (audioUrl) {
+    const audio = new Audio(audioUrl);
+    audio.onended = audio.onerror = () => { textPlay.index += 1; playNextTextLine(); };
+    try { await audio.play(); } catch (_) { textPlay.index += 1; playNextTextLine(); }
+  } else {
+    try {
+      const utterance = new SpeechSynthesisUtterance(s.chineseSentence || '');
+      utterance.lang = state.settings.defaultVoice || 'zh-TW';
+      utterance.rate = Number(state.settings.speechRate) || 0.85;
+      utterance.onend = utterance.onerror = () => { textPlay.index += 1; playNextTextLine(); };
+      speechSynthesis.cancel();
+      speechSynthesis.speak(utterance);
+    } catch (_) { textPlay.index += 1; playNextTextLine(); }
+  }
+}
+
+/* ---- 內容包匯入 ---- */
+let packRecordsCache = [];
+function splitPackRecords(text) {
+  return String(text || '').split(/^===RECORD===$/m).map(s => s.trim()).filter(s => s && !s.startsWith('#'));
+}
+async function loadPackPreview() {
+  const fileInput = $('packFileInput');
+  const file = fileInput && fileInput.files && fileInput.files[0];
+  const info = $('packInfo');
+  const importButton = $('packImportButton');
+  importButton.disabled = true;
+  packRecordsCache = [];
+  if (!file) { info.textContent = '請先選擇內容包 .txt 檔案（例如 packs/lesson-01.txt）。'; return; }
+  info.textContent = '讀取中…';
+  try {
+    const text = await file.text();
+    const records = splitPackRecords(text);
+    if (!records.length) throw new Error('檔案中沒有找到記錄');
+    const lessonKey = String(parsePaste(records[0]).lesson || '');
+    const existing = new Set(lessonRecords(lessonKey).map(s => (s.chineseSentence || '').trim()));
+    const fresh = records.filter(r => {
+      const p = parsePaste(r);
+      return p.chineseSentence && !existing.has(p.chineseSentence.trim());
+    });
+    packRecordsCache = fresh;
+    const dupes = records.length - fresh.length;
+    const lessonLabel = lessonKey ? `第 ${lessonKey} 課` : '內容包';
+    info.textContent = `${lessonLabel}：${records.length} 條記錄，可匯入 ${fresh.length} 條${dupes ? `（${dupes} 條已存在，自動跳過）` : ''}。`;
+    try { $('importPinInput').value = localStorage.getItem('csbSubmissionPin') || ''; } catch (_) {}
+    importButton.disabled = fresh.length === 0;
+  } catch (err) {
+    info.textContent = `讀取失敗：${err.message}。`;
+  }
+}
+function createPackRecord(content, aiSource, pin) {
+  return new Promise(resolve => {
+    const form = document.createElement('form');
+    form.method = 'POST'; form.action = API_URL; form.target = 'submissionFrame'; form.hidden = true;
+    const fields = { action: 'create', pin, content, aiSource: aiSource || '當代中文課程2' };
+    Object.entries(fields).forEach(([name, value]) => {
+      const field = name === 'content' ? document.createElement('textarea') : document.createElement('input');
+      field.name = name; field.value = value; form.appendChild(field);
+    });
+    document.body.appendChild(form); form.submit(); form.remove();
+    const parsed = parsePaste(content);
+    let checks = 0;
+    const verify = setInterval(() => {
+      checks += 1;
+      const callback = `verifyPackSave${Date.now()}${Math.random().toString(36).slice(2, 8)}`;
+      const script = document.createElement('script');
+      window[callback] = data => {
+        delete window[callback]; script.remove();
+        const rows = data && data.success ? data.sentences || [] : [];
+        const added = rows.find(row =>
+          row.chineseSentence === parsed.chineseSentence &&
+          row.pinyin === parsed.pinyin &&
+          row.hindiSentence === parsed.hindiSentence
+        );
+        if (added) {
+          clearInterval(verify);
+          state.sentences = rows;
+          resolve(true);
+        } else if (checks >= 10) {
+          clearInterval(verify);
+          resolve(false);
+        }
+      };
+      script.onerror = () => { delete window[callback]; script.remove(); };
+      script.src = `${API_URL}?action=list&callback=${callback}&_=${Date.now()}`;
+      document.body.appendChild(script);
+    }, 1800);
+  });
+}
+async function importPackRecords() {
+  const pin = $('importPinInput').value.trim();
+  const progress = $('importProgress');
+  if (!pin) { progress.textContent = '請輸入老師 PIN。'; return; }
+  if (!packRecordsCache.length) { progress.textContent = '沒有可匯入的記錄。'; return; }
+  try { localStorage.setItem('csbSubmissionPin', pin); } catch (_) {}
+  const button = $('packImportButton');
+  button.disabled = true;
+  const total = packRecordsCache.length;
+  let done = 0, failed = 0;
+  for (const content of packRecordsCache) {
+    const parsed = parsePaste(content);
+    progress.textContent = `匯入中 ${done + 1}/${total}：${(parsed.chineseSentence || '').slice(0, 18)}…`;
+    const ok = await createPackRecord(content, parsed.aiSource, pin);
+    if (ok) done += 1; else failed += 1;
+    await new Promise(r => setTimeout(r, 600));
+  }
+  courseMetaCache.clear();
+  renderSentences();
+  renderCourse();
+  packRecordsCache = [];
+  progress.textContent = `完成：成功 ${done} 條${failed ? `，失敗 ${failed} 條（請重載內容包再試）` : ''}。`;
+  button.disabled = true;
+}
+
+/* Course UI wiring */
+$('courseUnlockButton').addEventListener('click', unlockCourse);
+$('coursePinInput').addEventListener('keydown', e => { if (e.key === 'Enter') unlockCourse(); });
+$('lessonBackButton').addEventListener('click', () => { courseState.lesson = 0; renderLessonGrid(); $('courseSection').scrollIntoView({ behavior: 'smooth' }); });
+$('packLoadButton').addEventListener('click', loadPackPreview);
+$('packImportButton').addEventListener('click', importPackRecords);
+document.addEventListener('keydown', e => { if (e.key === 'Escape' && textPlay.playing) stopTextPlay(); });
