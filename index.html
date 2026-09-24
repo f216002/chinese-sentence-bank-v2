@@ -15,7 +15,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Noto+Sans+Devanagari:wght@400;500;600&family=Noto+Sans+TC:wght@400;500;700&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="styles.css?v=20260925-2">
+  <link rel="stylesheet" href="styles.css?v=20260925-3">
 </head>
 <body>
   <a class="skip-link" href="#sentenceGrid">Skip to sentence bank</a>
@@ -44,6 +44,39 @@
         <span><strong id="sentenceCount">—</strong> sentences</span>
         <span><strong id="categoryCount">—</strong> categories</span>
         <span class="live-status" id="apiStatus"><i></i> Connecting</span>
+      </div>
+    </section>
+
+    <section class="course" id="courseSection" aria-labelledby="courseTitle">
+      <div class="section-heading">
+        <div><span class="step">課程</span><h2 id="courseTitle">當代中文課程 <small class="course-vol">第二冊</small></h2></div>
+      </div>
+      <p class="section-note">依課本教學進度：課文、生詞、語法、練習、文化，配中文發音、拼音與印地文解說。課程內容僅供課堂教學使用。</p>
+      <div class="course-lock" id="courseLock">
+        <label class="course-pin-field"><span>老師 PIN</span><input type="password" id="coursePinInput" inputmode="numeric" autocomplete="off" placeholder="輸入老師 PIN 解鎖"></label>
+        <button class="primary-button" id="courseUnlockButton" type="button">解鎖課程</button>
+        <p class="course-lock-note" id="courseLockMessage" aria-live="polite"></p>
+      </div>
+      <div id="courseBody" class="hidden">
+        <div id="lessonGrid" class="lesson-grid" aria-live="polite"></div>
+        <div id="lessonView" class="hidden">
+          <button class="secondary-button" id="lessonBackButton" type="button">← 回課程總覽</button>
+          <div class="lesson-header" id="lessonHeader"></div>
+          <div class="lesson-tabs" role="tablist" aria-label="課程單元" id="lessonTabs"></div>
+          <div id="lessonContent"></div>
+        </div>
+        <details class="course-import" id="courseImportPanel">
+          <summary>課程管理（老師）：匯入內容包</summary>
+          <div class="import-controls">
+            <label class="course-pin-field"><span>內容包檔案（本機 .txt，不會上傳到網站）</span>
+              <input type="file" id="packFileInput" accept=".txt,text/plain"></label>
+            <button class="secondary-button" id="packLoadButton" type="button">讀取內容包</button>
+            <p class="import-info" id="packInfo" aria-live="polite"></p>
+            <label class="course-pin-field"><span>老師 PIN</span><input type="password" id="importPinInput" inputmode="numeric" autocomplete="off"></label>
+            <button class="primary-button" id="packImportButton" type="button" disabled>開始匯入</button>
+            <p class="import-info" id="importProgress" aria-live="polite"></p>
+          </div>
+        </details>
       </div>
     </section>
 
@@ -329,6 +362,6 @@ CATEGORY:
     </article>
   </template>
 
-  <script src="app.js?v=20260925-2"></script>
+  <script src="app.js?v=20260925-3"></script>
 </body>
 </html>
