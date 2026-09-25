@@ -1613,10 +1613,11 @@ function unlockCourse() {
   const pin = $('coursePinInput').value.trim();
   const msg = $('courseLockMessage');
   if (!pin) { msg.textContent = '請輸入老師 PIN。'; return; }
-  let remembered = '';
-  try { remembered = localStorage.getItem('csbSubmissionPin') || ''; } catch (_) {}
-  if (remembered && pin !== remembered) { msg.textContent = 'PIN 不正確，請再試一次。'; return; }
-  try { sessionStorage.setItem('csbCourseUnlocked', '1'); } catch (_) {}
+  /* 以這次輸入的 PIN 為準並記住，不再比對殘留的舊值（舊邏輯會因 localStorage 殘留舊 PIN 而永久鎖死）。 */
+  try {
+    localStorage.setItem('csbSubmissionPin', pin);
+    sessionStorage.setItem('csbCourseUnlocked', '1');
+  } catch (_) {}
   msg.textContent = '';
   renderCourse();
 }
