@@ -1567,17 +1567,20 @@ initPronunciationLab();
 loadBank();
 
 /* ================= Course module: 當代中文課程 ================= */
-/* 課號規則：1–15 ＝第二冊，101–115 ＝第一冊（第一冊第 X 課記為 100+X）。 */
-function bookOf(n) { return Number(n) >= 101 ? 1 : 2; }
-function bookLessonNum(n) { return Number(n) >= 101 ? Number(n) - 100 : Number(n); }
+/* 課號規則：1–15 ＝第二冊，101–115 ＝第一冊（第一冊第 X 課記為 100+X），201–212 ＝第三冊（第三冊第 X 課記為 200+X）。 */
+function bookOf(n) { n = Number(n); return n >= 201 ? 3 : (n >= 101 ? 1 : 2); }
+function bookLessonNum(n) { n = Number(n); return n >= 201 ? n - 200 : (n >= 101 ? n - 100 : n); }
 function lessonLabel(n) {
-  return bookOf(n) === 1 ? `第一冊第 ${bookLessonNum(n)} 課` : `第二冊第 ${n} 課`;
+  const b = bookOf(n);
+  return b === 3 ? `第三冊第 ${bookLessonNum(n)} 課` : (b === 1 ? `第一冊第 ${bookLessonNum(n)} 課` : `第二冊第 ${n} 課`);
 }
 function lessonShortLabel(n) {
-  return bookOf(n) === 1 ? `第一冊第${bookLessonNum(n)}課` : `第二冊第${n}課`;
+  const b = bookOf(n);
+  return b === 3 ? `第三冊第${bookLessonNum(n)}課` : (b === 1 ? `第一冊第${bookLessonNum(n)}課` : `第二冊第${n}課`);
 }
 function bookTitle(n) {
-  return bookOf(n) === 1 ? '第一冊・當代中文課程' : '第二冊・當代中文課程';
+  const b = bookOf(n);
+  return b === 3 ? '第三冊・當代中文課程' : (b === 1 ? '第一冊・當代中文課程' : '第二冊・當代中文課程');
 }
 const COURSE_LESSONS = [
   { n: 101, zh: '歡迎你來臺灣！', en: 'Welcome to Taiwan!', topic: '自我介紹' },
@@ -1609,10 +1612,22 @@ const COURSE_LESSONS = [
   { n: 12, zh: '怎麼吃才健康？', en: 'How to Eat Healthily?', topic: '健康' },
   { n: 13, zh: '我的手機掉了', en: 'I Lost My Cell Phone', topic: '意外' },
   { n: 14, zh: '我要開始找工作了', en: "I'm Going to Start Job Hunting", topic: '求職' },
-  { n: 15, zh: '過春節', en: 'Celebrating Spring Festival', topic: '節慶' }
+  { n: 15, zh: '過春節', en: 'Celebrating Spring Festival', topic: '節慶' },
+  { n: 201, zh: '開學了', en: 'School Is Starting', topic: '開學' },
+  { n: 202, zh: '八折起', en: 'Starting at 20% Off', topic: '購物' },
+  { n: 203, zh: '外套帶了沒有？', en: 'Did You Bring Your Coat?', topic: '生活' },
+  { n: 204, zh: '我愛台灣的人情味', en: 'I Love the Human Touch of Taiwan', topic: '人情' },
+  { n: 205, zh: '現在流行什麼？', en: "What's in Fashion Now?", topic: '流行' },
+  { n: 206, zh: '到鄉下住一晚！', en: 'A Night in the Countryside!', topic: '鄉村' },
+  { n: 207, zh: '我最親的家「人」', en: 'My Closest "Family"', topic: '家庭' },
+  { n: 208, zh: '我想做自己', en: 'I Want to Be Myself', topic: '自我' },
+  { n: 209, zh: '網購時代', en: 'The Age of Online Shopping', topic: '網購' },
+  { n: 210, zh: '我住院了', en: 'I Am in the Hospital', topic: '醫療' },
+  { n: 211, zh: '台灣故事', en: 'Stories of Taiwan', topic: '歷史' },
+  { n: 212, zh: '我要去投票', en: "I'm Going to Vote", topic: '選舉' }
 ];
 const COURSE_TABS = ['課文', '生詞', '語法', '練習', '文化', '補充'];
-const COURSE_PACK_LESSONS = [101, 102, 103, 104, 105, 106, 107, 108, 109, 110, 111, 112, 113, 114, 115, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15];
+const COURSE_PACK_LESSONS = [101, 102, 103, 104, 105, 106, 107, 108, 109, 110, 111, 112, 113, 114, 115, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 201, 202, 203, 204, 205, 206, 207, 208, 209, 210, 211, 212];
 const courseState = { lesson: 0, tab: '課文' };
 
 function isCourseUnlocked() {
