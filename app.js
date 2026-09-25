@@ -1572,15 +1572,15 @@ function bookOf(n) { n = Number(n); return n >= 601 ? 6 : (n >= 501 ? 5 : (n >= 
 function bookLessonNum(n) { n = Number(n); return n >= 601 ? n - 600 : (n >= 501 ? n - 500 : (n >= 301 ? n - 300 : (n >= 201 ? n - 200 : (n >= 101 ? n - 100 : n)))); }
 function lessonLabel(n) {
   const b = bookOf(n);
-  return b === 6 ? `第六冊第 ${bookLessonNum(n)} 課` : (b === 5 ? `第五冊第 ${bookLessonNum(n)} 課` : (b === 4 ? `第四冊第 ${bookLessonNum(n)} 課` : (b === 3 ? `第三冊第 ${bookLessonNum(n)} 課` : (b === 1 ? `第一冊第 ${bookLessonNum(n)} 課` : `第二冊第 ${n} 課`)));
+  return b === 6 ? `第六冊第 ${bookLessonNum(n)} 課` : (b === 5 ? `第五冊第 ${bookLessonNum(n)} 課` : (b === 4 ? `第四冊第 ${bookLessonNum(n)} 課` : (b === 3 ? `第三冊第 ${bookLessonNum(n)} 課` : (b === 1 ? `第一冊第 ${bookLessonNum(n)} 課` : `第二冊第 ${n} 課`))));
 }
 function lessonShortLabel(n) {
   const b = bookOf(n);
-  return b === 6 ? `第六冊第${bookLessonNum(n)}課` : (b === 5 ? `第五冊第${bookLessonNum(n)}課` : (b === 4 ? `第四冊第${bookLessonNum(n)}課` : (b === 3 ? `第三冊第${bookLessonNum(n)}課` : (b === 1 ? `第一冊第${bookLessonNum(n)}課` : `第二冊第${n}課`)));
+  return b === 6 ? `第六冊第${bookLessonNum(n)}課` : (b === 5 ? `第五冊第${bookLessonNum(n)}課` : (b === 4 ? `第四冊第${bookLessonNum(n)}課` : (b === 3 ? `第三冊第${bookLessonNum(n)}課` : (b === 1 ? `第一冊第${bookLessonNum(n)}課` : `第二冊第${n}課`))));
 }
 function bookTitle(n) {
   const b = bookOf(n);
-  return b === 6 ? '第六冊・當代中文課程' : (b === 5 ? '第五冊・當代中文課程' : (b === 4 ? '第四冊・當代中文課程' : (b === 3 ? '第三冊・當代中文課程' : (b === 1 ? '第一冊・當代中文課程' : '第二冊・當代中文課程')));
+  return b === 6 ? '第六冊・當代中文課程' : (b === 5 ? '第五冊・當代中文課程' : (b === 4 ? '第四冊・當代中文課程' : (b === 3 ? '第三冊・當代中文課程' : (b === 1 ? '第一冊・當代中文課程' : '第二冊・當代中文課程'))));
 }
 const COURSE_LESSONS = [
   { n: 101, zh: '歡迎你來臺灣！', en: 'Welcome to Taiwan!', topic: '自我介紹' },
