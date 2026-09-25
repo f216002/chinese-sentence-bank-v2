@@ -15,7 +15,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Noto+Sans+Devanagari:wght@400;500;600&family=Noto+Sans+TC:wght@400;500;700&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="styles.css?v=20260925-5">
+  <link rel="stylesheet" href="styles.css?v=20260925-6">
 </head>
 <body>
   <a class="skip-link" href="#sentenceGrid">Skip to sentence bank</a>
@@ -72,7 +72,7 @@
               <input type="file" id="packFileInput" accept=".txt,text/plain"></label>
             <button class="secondary-button" id="packLoadButton" type="button">讀取內容包</button>
             <p class="import-info" id="packInfo" aria-live="polite"></p>
-            <label class="import-check"><input type="checkbox" id="importUpdateCheckbox"> <span>以內容包更新已存在的相同句子（取代舊記錄；舊記錄若有錄音會一併移除）</span></label>
+            <label class="import-check"><input type="checkbox" id="importUpdateCheckbox"> <span>以內容包更新已存在的相同句子（直接更新內容，保留錄音）</span></label>
             <label class="course-pin-field"><span>老師 PIN</span><input type="password" id="importPinInput" inputmode="numeric" autocomplete="off"></label>
             <button class="primary-button" id="packImportButton" type="button" disabled>開始匯入</button>
             <p class="import-info" id="importProgress" aria-live="polite"></p>
@@ -310,7 +310,7 @@ CATEGORY:
     <span class="step edit-step">EDIT SENTENCE</span>
     <h2>Edit sentence</h2>
     <p class="edit-note" id="editRecordNote"></p>
-    <p class="edit-audio-note hidden" id="editAudioNote">This sentence has a saved teacher recording. Editing creates a new record, so the recording will no longer be attached — you can record it again afterwards.</p>
+    <p class="edit-audio-note hidden" id="editAudioNote">This sentence has a saved teacher recording. It stays attached after editing.</p>
     <div class="edit-fields">
       <label class="edit-field">Hindi sentence<textarea id="editHindi" lang="hi" rows="2"></textarea></label>
       <label class="edit-field">Chinese sentence<input id="editChinese" lang="zh-Hant" autocomplete="off"></label>
@@ -330,7 +330,6 @@ CATEGORY:
     <div class="parse-message" id="editMessage" role="status" aria-live="polite"></div>
   </dialog>
 
-  <iframe class="submission-frame" id="submissionFrame" name="submissionFrame" title="Sentence submission response"></iframe>
 
   <footer class="site-footer">
     <div class="footer-inner">
@@ -363,6 +362,10 @@ CATEGORY:
     </article>
   </template>
 
-  <script src="app.js?v=20260925-5"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-storage-compat.js"></script>
+  <script src="app.js?v=20260925-6"></script>
 </body>
 </html>
