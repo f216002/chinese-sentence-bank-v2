@@ -1241,13 +1241,14 @@ function courseMeta(sentence) {
 }
 
 function renderSentences() {
-  /* 搜尋啟用時（有關鍵字或主題篩選）涵蓋全資料庫，包含課程記錄；無搜尋條件時只顯示個人句庫。 */
+  /* 搜尋啟用時（有關鍵字或主題篩選）涵蓋全資料庫，包含課程記錄；無搜尋條件時只顯示個人句庫。
+     課程記錄以 seq != null 判斷（課程內容包順序號），比 courseMeta 更直接可靠。 */
   const hasKeyword = ['keywordA', 'keywordB', 'keywordC'].some(id => normalizeSearchText($(id).value));
   const hasTopicFilter = state.selectedCategories.size > 0 && state.selectedCategories.size < (state.categories || []).length;
   const searching = hasKeyword || hasTopicFilter;
   const visible = state.sentences.filter(s => {
-    const meta = courseMeta(s);
-    if (meta.lesson && !searching) return false; /* 非搜尋時，課程記錄只在課程區顯示 */
+    const isCourseRecord = (s.seq != null);
+    if (isCourseRecord && !searching) return false; /* 非搜尋時，課程記錄只在課程區顯示 */
     const haystack = normalizeSearchText([s.recordId,s.hindiSentence,romanHindiFor(s),s.chineseSentence,s.pinyin,s.hindiExplanation,s.category,s.tags].join(' '));
     const topicMatch = state.selectedCategories.size === 0 || [...sentenceTopics(s)].some(topic => state.selectedCategories.has(topic));
     return matchesKeywordExpression(haystack) && topicMatch;
@@ -1330,10 +1331,19 @@ function handlePreview() {
   const parsed = parsePaste(text);
   const missing = [['Hindi',parsed.hindiSentence],['Chinese',parsed.chineseSentence],['Pinyin',parsed.pinyin],['Roman',parsed.romanHindi],['Explanation',parsed.hindiExplanation]].filter(([,v]) => !v).map(([k]) => k);
   if (missing.length) { $('parseMessage').textContent = `Please add these labelled parts: ${missing.join(', ')}.`; return; }
-  /* Duplicate check against the loaded bank. */
+  /* Duplicate check: only block if the same Chinese sentence already exists in the
+     SAME location (same lesson supplement, or My Sentence Bank). A sentence in a
+     lesson supplement does not block adding it to My Sentence Bank, and vice versa. */
   const chinese = parsed.chineseSentence.trim();
   const hindi = parsed.hindiSentence.trim();
-  const exactDupe = state.sentences.find(s => (s.chineseSentence || '').trim() === chinese);
+  const targetLesson = (typeof courseState !== 'undefined' && courseState.lesson > 0) ? String(courseState.lesson) : '';
+  const exactDupe = state.sentences.find(s => {
+    if ((s.chineseSentence || '').trim() !== chinese) return false;
+    const m = courseMeta(s);
+    const sLesson = m.lesson || '';
+    // Same location: both in the same lesson, or both in personal bank (no lesson)
+    return targetLesson ? (sLesson === targetLesson) : !sLesson;
+  });
   if (exactDupe) {
     const dupeMeta = courseMeta(exactDupe);
     const location = dupeMeta.lesson ? `${lessonLabel(Number(dupeMeta.lesson))}${dupeMeta.section ? '「' + dupeMeta.section + '」' : ''}` : 'My Sentence Bank';
