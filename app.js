@@ -185,7 +185,6 @@ let activeCardButton = null;
 let pendingModelSave = null;
 let pendingDeleteSentence = null;
 let pendingEditSentence = null;
-let pendingSuppLesson = null; /* 新增補充分頁句子時：目標課號；編輯既有記錄時為 null */
 
 function parsePaste(text) {
   const labels = ['HINDI', 'CHINESE', 'PINYIN', 'ROMAN', 'EXPLANATION', 'CATEGORY', 'TAGS', 'AI SOURCE', 'LESSON', 'SECTION', 'SPEAKER', 'POS', 'ZHUYIN'];
@@ -705,40 +704,20 @@ function openEditDialog(sentence) {
   $('editMessage').textContent = '';
   $('confirmEdit').disabled = false;
   $('confirmEdit').textContent = 'Save changes';
-  pendingSuppLesson = null;
   updateEditWarnings();
   $('editDialog').showModal();
   setTimeout(() => $('editHindi').focus(), 50);
 }
 
-/* 新增補充句子：借用同一個編輯對話框，但走「建立」流程，不刪除舊記錄。 */
-function openSuppDialog(lessonNum) {
-  pendingEditSentence = null;
-  pendingSuppLesson = lessonNum;
-  $('editHindi').value = '';
-  $('editChinese').value = '';
-  $('editPinyin').value = '';
-  $('editRoman').value = '';
-  $('editExplanation').value = '';
-  $('editCategory').value = '課程';
-  $('editTags').value = `${lessonShortLabel(lessonNum)}, 補充`;
-  $('editAiSource').value = '老師補充';
-  const list = $('editCategoryList');
-  list.innerHTML = '';
-  (state.categories || []).forEach(c => {
-    const option = document.createElement('option');
-    option.value = c;
-    list.appendChild(option);
-  });
-  $('editRecordNote').textContent = `為${lessonShortLabel(lessonNum)}新增補充句子，儲存後會出現在「補充」分頁。`;
-  $('editAudioNote').classList.add('hidden');
-  try { $('editPinInput').value = localStorage.getItem('csbSubmissionPin') || ''; } catch (_) {}
-  $('editMessage').textContent = '';
-  $('confirmEdit').disabled = false;
-  $('confirmEdit').textContent = '新增補充句子';
-  updateEditWarnings();
-  $('editDialog').showModal();
-  setTimeout(() => $('editHindi').focus(), 50);
+/* 新增補充句子：直接前往頁面上方的 AI 新增流程（Create your AI prompt → Paste the AI answer），
+   不再跳出表單。送出時 submitSentence 會依 courseState.lesson 自動歸入該課「補充」。 */
+function goToAiFlowForSupp(lessonNum) {
+  if (typeof courseState !== 'undefined') courseState.lesson = lessonNum;
+  const target = document.getElementById('createPrompt');
+  if (target) target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  const msg = $('promptMessage');
+  if (msg) msg.textContent = `為${lessonShortLabel(lessonNum)}新增補充句子：請在下方輸入句子並完成 AI 流程，儲存後會自動歸入該課「補充」分頁。`;
+  setTimeout(() => { const ta = $('promptSentence'); if (ta) ta.focus({ preventScroll: true }); }, 650);
 }
 
 function updateEditWarnings() {
@@ -780,10 +759,7 @@ function buildEditedPaste() {
     ['AI SOURCE', $('editAiSource').value.trim() || 'ChatGPT / Gemini'],
   ];
   /* Keep course labels so editing a lesson record does not drop it from the course view. */
-  if (pendingSuppLesson) {
-    lines.push(['LESSON', String(pendingSuppLesson)]);
-    lines.push(['SECTION', '補充']);
-  } else if (pendingEditSentence) {
+  if (pendingEditSentence) {
     const meta = courseMeta(pendingEditSentence);
     if (meta.lesson) lines.push(['LESSON', meta.lesson]);
     if (meta.section) lines.push(['SECTION', meta.section]);
@@ -795,14 +771,12 @@ function buildEditedPaste() {
 }
 
 /* Edit sentence: Firebase supports true in-place updates, so editing keeps the
-   same recordId and any attached teacher recording. New "補充" sentences
-   still create a fresh record. */
+   same recordId and any attached teacher recording. */
 async function submitEdit() {
   const pin = $('editPinInput').value.trim();
   if (!pin) { $('editMessage').textContent = 'Enter the teacher PIN.'; return; }
-  if (!pendingEditSentence && !pendingSuppLesson) { $('editDialog').close(); return; }
-  const original = pendingEditSentence; /* null = 新增補充句子 */
-  const isCreate = !original;
+  if (!pendingEditSentence) { $('editDialog').close(); return; }
+  const original = pendingEditSentence;
   const edited = {
     hindiSentence: $('editHindi').value.trim(),
     chineseSentence: $('editChinese').value.trim(),
@@ -813,12 +787,12 @@ async function submitEdit() {
   const missing = [['Hindi', edited.hindiSentence], ['Chinese', edited.chineseSentence], ['Pinyin', edited.pinyin], ['Roman', edited.romanHindi], ['Explanation', edited.hindiExplanation]]
     .filter(([, value]) => !value).map(([label]) => label);
   if (missing.length) { $('editMessage').textContent = `Please fill in: ${missing.join(', ')}.`; return; }
-  const exactDupe = state.sentences.find(s => s.recordId !== (original && original.recordId) && (s.chineseSentence || '').trim() === edited.chineseSentence);
+  const exactDupe = state.sentences.find(s => s.recordId !== original.recordId && (s.chineseSentence || '').trim() === edited.chineseSentence);
   if (exactDupe) { $('editMessage').textContent = `Blocked: this Chinese sentence already exists as record ${exactDupe.recordId || 'another record'}.`; return; }
 
   const button = $('confirmEdit');
   button.disabled = true;
-  $('editMessage').textContent = isCreate ? '新增補充句子…' : 'Saving changes…';
+  $('editMessage').textContent = 'Saving changes…';
   try { localStorage.setItem('csbSubmissionPin', pin); } catch (_) {}
 
   const content = buildEditedPaste();
@@ -828,34 +802,22 @@ async function submitEdit() {
     tags: $('editTags').value.trim(),
     aiSource: $('editAiSource').value.trim() || 'ChatGPT / Gemini',
     originalPaste: content,
-    /* 新增補充句子接在該課最後；原地編輯保留原順序號。 */
-    seq: isCreate ? nextCourseSeq(pendingSuppLesson) : (original.seq != null ? original.seq : null),
+    /* 原地編輯保留原順序號。 */
+    seq: original.seq != null ? original.seq : null,
   });
 
   try {
     await ensureAuth();
-    if (isCreate) {
-      /* 新增補充句子：建立新記錄。 */
-      await fbDb.collection(SENTENCES_COL).add(data);
-      await reloadSentences();
-      courseMetaCache.clear();
-      renderSentences();
-      renderCourse();
-      pendingSuppLesson = null;
-      $('editMessage').textContent = '已新增補充句子。';
-      setTimeout(() => { $('editDialog').close(); $('confirmEdit').textContent = 'Save changes'; }, 700);
-    } else {
-      /* 原地更新：保留 recordId、建立時間與錄音，只換內容欄位。 */
-      const { createdAt, audioPath, audioMime, favorite, ...contentFields } = data;
-      await fbDb.collection(SENTENCES_COL).doc(original.recordId).update(contentFields);
-      await reloadSentences();
-      courseMetaCache.clear();
-      renderSentences();
-      renderCourse();
-      pendingEditSentence = null;
-      $('editMessage').textContent = 'Changes saved.';
-      setTimeout(() => $('editDialog').close(), 700);
-    }
+    /* 原地更新：保留 recordId、建立時間與錄音，只換內容欄位。 */
+    const { createdAt, audioPath, audioMime, favorite, ...contentFields } = data;
+    await fbDb.collection(SENTENCES_COL).doc(original.recordId).update(contentFields);
+    await reloadSentences();
+    courseMetaCache.clear();
+    renderSentences();
+    renderCourse();
+    pendingEditSentence = null;
+    $('editMessage').textContent = 'Changes saved.';
+    setTimeout(() => $('editDialog').close(), 700);
   } catch (err) {
     button.disabled = false;
     $('editMessage').textContent = `Save failed: ${(err && err.message) || 'Unknown error.'}`;
@@ -1648,7 +1610,7 @@ $('deletePinInput').addEventListener('keydown', e => { if (e.key === 'Enter') su
 $('closeDelete').addEventListener('click', () => { pendingDeleteSentence = null; $('deleteDialog').close(); });
 $('confirmEdit').addEventListener('click', submitEdit);
 $('editPinInput').addEventListener('keydown', e => { if (e.key === 'Enter') submitEdit(); });
-$('closeEdit').addEventListener('click', () => { pendingEditSentence = null; pendingSuppLesson = null; $('confirmEdit').textContent = 'Save changes'; $('editDialog').close(); });
+$('closeEdit').addEventListener('click', () => { pendingEditSentence = null; $('confirmEdit').textContent = 'Save changes'; $('editDialog').close(); });
 ['editHindi', 'editChinese', 'editPinyin', 'editRoman', 'editExplanation'].forEach(id => $(id).addEventListener('input', updateEditWarnings));
 initPronunciationLab();
 loadBank();
@@ -2065,12 +2027,12 @@ function renderSuppTab(content, recs, lessonNum) {
   bar.className = 'supp-bar';
   const hint = document.createElement('p');
   hint.className = 'supp-hint';
-  hint.textContent = '老師針對本課補充的句子：課堂上臨時加的例句、學生問到的句子，都可以記在這裡，跟著本課走。';
+  hint.textContent = '老師針對本課補充的句子：課堂上臨時加的例句、學生問到的句子，都可以記在這裡，跟著本課走。按右方按鈕前往上方的 AI 新增流程，完成後句子會自動歸入本課「補充」。';
   const addButton = document.createElement('button');
   addButton.type = 'button';
   addButton.className = 'primary-button';
   addButton.textContent = '＋ 新增補充句子';
-  addButton.addEventListener('click', () => openSuppDialog(lessonNum));
+  addButton.addEventListener('click', () => goToAiFlowForSupp(lessonNum));
   bar.appendChild(hint);
   bar.appendChild(addButton);
   content.appendChild(bar);
