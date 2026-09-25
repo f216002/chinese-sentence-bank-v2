@@ -1250,7 +1250,8 @@ function renderSentences() {
     const isCourseRecord = (s.seq != null);
     if (isCourseRecord && !searching) return false; /* 非搜尋時，課程記錄只在課程區顯示 */
     const haystack = normalizeSearchText([s.recordId,s.hindiSentence,romanHindiFor(s),s.chineseSentence,s.pinyin,s.hindiExplanation,s.category,s.tags].join(' '));
-    const topicMatch = state.selectedCategories.size === 0 || [...sentenceTopics(s)].some(topic => state.selectedCategories.has(topic));
+    /* 主題篩選：只有當使用者選了「部分」主題時才過濾；全選或全不選都視為無限制（課程記錄的「課程」分類不在主題清單內，全選時不應被排除）。 */
+    const topicMatch = !hasTopicFilter || [...sentenceTopics(s)].some(topic => state.selectedCategories.has(topic));
     return matchesKeywordExpression(haystack) && topicMatch;
   });
   const grid = $('sentenceGrid'); grid.innerHTML = '';
