@@ -108,6 +108,8 @@
 .course-pin-field input{width:220px;padding:0 14px}
 .course-lock-note{width:100%;margin:0;color:var(--red);font-size:14px;min-height:20px}
 .lesson-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(210px,1fr));gap:14px}
+.book-divider{grid-column:1/-1;font-size:15px;font-weight:700;letter-spacing:.2em;color:var(--teal);border-bottom:2px solid var(--teal);padding:14px 2px 8px;margin-top:6px}
+.book-divider:first-child{margin-top:0}
 .lesson-card{display:grid;gap:6px;justify-items:start;text-align:left;background:white;border:1px solid var(--line);border-radius:14px;padding:22px;cursor:pointer;box-shadow:0 8px 28px rgba(34,50,47,.06);color:var(--ink)}
 .lesson-card:hover:not(:disabled){border-color:var(--teal);transform:translateY(-2px)}
 .lesson-card:disabled{cursor:not-allowed;opacity:.55}
