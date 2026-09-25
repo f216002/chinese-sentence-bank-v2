@@ -2119,15 +2119,20 @@ function deletePackRecord(recordId, pin) {
         if (data && data.success && data.deletedRecordId === recordId) {
           clearInterval(verify);
           resolve(true);
-        } else if (checks >= 12) {
+        } else if (data && data.success === false) {
+          clearInterval(verify);
+          resolve(false);
+        } else if (checks >= 20) {
           clearInterval(verify);
           resolve(false);
         }
       };
       script.onerror = () => { delete window[callback]; script.remove(); };
-      script.src = `${API_URL}?action=list&callback=${callback}&_=${Date.now()}`;
+      /* 刪除確認必須走 uploadStatus＋requestId：action=list 只回傳句子清單，
+         永遠不會帶 deletedRecordId，用它輪詢永遠等不到確認。 */
+      script.src = `${API_URL}?action=uploadStatus&requestId=${encodeURIComponent(requestId)}&callback=${callback}&_=${Date.now()}`;
       document.body.appendChild(script);
-    }, 1500);
+    }, 1200);
   });
 }
 async function importPackRecords() {
