@@ -71,6 +71,7 @@ function docToSentence(id, d) {
     standardAudioUrl: audioPath, /* truthy marker: existing UI checks keep working */
     createdAt: d.createdAt || null,
     updatedAt: d.updatedAt || null,
+    seq: (d.seq == null ? null : d.seq),
   };
 }
 
@@ -89,16 +90,38 @@ function sentenceDocData(fields) {
     favorite: false,
     audioPath: '',
     audioMime: '',
+    /* 課程內容包順序號：課號 × 100000 ＋ 包內序號；非課程記錄為 null。 */
+    seq: (fields.seq == null ? null : fields.seq),
     createdAt: serverTimestamp(),
     updatedAt: serverTimestamp(),
   };
 }
 
+/* 課程記錄按內容包順序號排列（課號×100000＋包內序號）；無序號者維持原相對順序排在後面。 */
+function sortSentencesBySeq(list) {
+  list.sort((a, b) => {
+    const sa = (a.seq == null ? Number.MAX_SAFE_INTEGER : a.seq);
+    const sb = (b.seq == null ? Number.MAX_SAFE_INTEGER : b.seq);
+    return sa - sb;
+  });
+  return list;
+}
+
 async function reloadSentences() {
   const snap = await fbDb.collection(SENTENCES_COL).get();
-  state.sentences = snap.docs.map(d => docToSentence(d.id, d.data()));
+  state.sentences = sortSentencesBySeq(snap.docs.map(d => docToSentence(d.id, d.data())));
   $('sentenceCount').textContent = state.sentences.length;
   saveBankCache();
+}
+
+/* 課程某課下一個順序號（手動新增補充句子用）。 */
+function nextCourseSeq(lessonNum) {
+  const base = Number(lessonNum) * 100000;
+  let max = 0;
+  lessonRecords(lessonNum).forEach(s => {
+    if (s.seq != null && s.seq >= base && s.seq < base + 100000) max = Math.max(max, s.seq - base);
+  });
+  return base + max + 1;
 }
 
 function defaultSettings() {
@@ -798,6 +821,8 @@ async function submitEdit() {
     tags: $('editTags').value.trim(),
     aiSource: $('editAiSource').value.trim() || 'ChatGPT / Gemini',
     originalPaste: content,
+    /* 新增補充句子接在該課最後；原地編輯保留原順序號。 */
+    seq: isCreate ? nextCourseSeq(pendingSuppLesson) : (original.seq != null ? original.seq : null),
   });
 
   try {
@@ -1421,7 +1446,7 @@ async function loadBank(attempt = 1) {
       fbDb.collection(SENTENCES_COL).get(),
       fbDb.collection(META_COL).doc(SETTINGS_DOC).get(),
     ]);
-    const sentences = snap.docs.map(d => docToSentence(d.id, d.data()));
+    const sentences = sortSentencesBySeq(snap.docs.map(d => docToSentence(d.id, d.data())));
     const settings = settingsSnap.exists ? { ...defaultSettings(), ...settingsSnap.data() } : defaultSettings();
     /* Start anonymous auth in the background so writes are ready when needed. */
     ensureAuth().catch(err => console.warn('Anonymous sign-in failed:', err && err.message));
@@ -1692,7 +1717,7 @@ function tagList(s) {
 /* ---- 課文：對話／短文 ---- */
 function textGroupName(s) {
   const tags = tagList(s);
-  for (const name of ['對話一', '對話二', '對話三', '短文']) {
+  for (const name of ['對話一', '對話二', '對話三', '對話', '短文']) {
     if (tags.includes(name)) return name;
   }
   return '課文';
@@ -1705,7 +1730,7 @@ function renderTextTab(content, recs) {
     (groups[g] = groups[g] || []).push(s);
   });
   Object.keys(groups).sort((a, b) => {
-    const order = ['對話一', '對話二', '對話三', '短文', '課文'];
+    const order = ['對話一', '對話二', '對話三', '對話', '短文', '課文'];
     return order.indexOf(a) - order.indexOf(b);
   }).forEach(groupName => {
     const lines = groups[groupName];
@@ -1971,18 +1996,31 @@ async function loadPackPreview() {
     if (!records.length) throw new Error('檔案中沒有找到記錄');
     const lessonKey = String(parsePaste(records[0]).lesson || '');
     const updateMode = $('importUpdateCheckbox').checked;
+    const lessonNum = Number(lessonKey) || 0;
+    /* 比對鍵：課＋節＋中文＋說話人＋解釋；中文鍵作後備，避免重複寫入。 */
+    const matchKey = (lesson, section, chinese, speaker, expl) =>
+      [lesson, section, chinese, speaker, expl].join('‖');
+    const existingByKey = new Map();
     const existingByChinese = new Map();
-    lessonRecords(lessonKey).forEach(s => existingByChinese.set((s.chineseSentence || '').trim(), s));
+    lessonRecords(lessonKey).forEach(s => {
+      const m = courseMeta(s);
+      existingByKey.set(matchKey(m.lesson, m.section, (s.chineseSentence || '').trim(), m.speaker, (s.hindiExplanation || '').trim()), s);
+      const ck = (s.chineseSentence || '').trim();
+      if (ck && !existingByChinese.has(ck)) existingByChinese.set(ck, s);
+    });
     const items = [];
-    records.forEach(r => {
+    records.forEach((r, idx) => {
       const p = parsePaste(r);
       if (!p.chineseSentence) return;
-      const old = existingByChinese.get(p.chineseSentence.trim());
+      const ck = p.chineseSentence.trim();
+      const old = existingByKey.get(matchKey(lessonKey, (p.section || '').trim(), ck, (p.speaker || '').trim(), (p.hindiExplanation || '').trim()))
+        || existingByChinese.get(ck);
       if (old && !updateMode) return; /* 已存在且未勾更新：跳過 */
       items.push({
         content: r,
         oldRecordId: old ? old.recordId : null,
         hasAudio: !!(old && (old.standardAudioUrl || teacherAudioCache.get(old.recordId) || recordingForSentence(old))),
+        seq: lessonNum ? lessonNum * 100000 + (idx + 1) : null, /* 內容包內順序 */
       });
     });
     packRecordsCache = items;
@@ -2029,6 +2067,7 @@ async function importPackRecords() {
         tags: parsed.tags || '',
         aiSource: parsed.aiSource || '當代中文課程2',
         originalPaste: item.content,
+        seq: item.seq,
       });
       if (item.oldRecordId) {
         /* 更新：只換內容欄位，保留 recordId、建立時間與錄音。 */
