@@ -1425,14 +1425,27 @@ async function submitSentence() {
   $('saveMessage').textContent = 'Saving sentence…';
   const submitted = { ...state.preview };
 
+  /* 若正在瀏覽某一課（courseState.lesson > 0），AI 新增的句子歸入該課「補充」；
+     若未開啟任何課程，則按原規則歸入個人句庫。 */
+  const activeLesson = (typeof courseState !== 'undefined' && courseState.lesson > 0) ? courseState.lesson : 0;
+  if (activeLesson > 0) {
+    const pasteBase = String(submitted.originalPaste || '').trim();
+    submitted.originalPaste = pasteBase + `\nLESSON: ${activeLesson}\nSECTION: 補充`;
+    submitted.category = '課程';
+    submitted.tags = `${lessonShortLabel(activeLesson)}, 補充`;
+    submitted.seq = nextCourseSeq(activeLesson);
+  }
+
   try {
     await ensureAuth();
     await fbDb.collection(SENTENCES_COL).add(sentenceDocData(submitted));
     await reloadSentences();
     renderSentences();
-    $('saveMessage').textContent = 'Saved successfully!'; $('confirmSave').disabled = false;
+    if (activeLesson > 0) { courseMetaCache.clear(); renderCourse(); }
+    $('saveMessage').textContent = activeLesson > 0 ? `已儲存至${lessonShortLabel(activeLesson)}「補充」。` : 'Saved successfully!';
+    $('confirmSave').disabled = false;
     $('pasteInput').value = ''; $('previewPanel').classList.add('hidden');
-    setTimeout(() => { $('pinDialog').close(); $('libraryTitle').scrollIntoView({behavior:'smooth'}); }, 800);
+    setTimeout(() => { $('pinDialog').close(); if (activeLesson > 0) { $('courseSection').scrollIntoView({behavior:'smooth'}); } else { $('libraryTitle').scrollIntoView({behavior:'smooth'}); } }, 800);
   } catch (err) {
     $('confirmSave').disabled = false;
     $('saveMessage').textContent = `Save failed: ${(err && err.message) || 'Unknown error.'}`;
