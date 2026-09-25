@@ -1567,20 +1567,20 @@ initPronunciationLab();
 loadBank();
 
 /* ================= Course module: 當代中文課程 ================= */
-/* 課號規則：1–15 ＝第二冊，101–115 ＝第一冊（第一冊第 X 課記為 100+X），201–212 ＝第三冊（第三冊第 X 課記為 200+X）。 */
-function bookOf(n) { n = Number(n); return n >= 201 ? 3 : (n >= 101 ? 1 : 2); }
-function bookLessonNum(n) { n = Number(n); return n >= 201 ? n - 200 : (n >= 101 ? n - 100 : n); }
+/* 課號規則：1–15 ＝第二冊，101–115 ＝第一冊（第一冊第 X 課記為 100+X），201–212 ＝第三冊（第三冊第 X 課記為 200+X），301–312 ＝第四冊（第四冊第 X 課記為 300+X）。 */
+function bookOf(n) { n = Number(n); return n >= 301 ? 4 : (n >= 201 ? 3 : (n >= 101 ? 1 : 2)); }
+function bookLessonNum(n) { n = Number(n); return n >= 301 ? n - 300 : (n >= 201 ? n - 200 : (n >= 101 ? n - 100 : n)); }
 function lessonLabel(n) {
   const b = bookOf(n);
-  return b === 3 ? `第三冊第 ${bookLessonNum(n)} 課` : (b === 1 ? `第一冊第 ${bookLessonNum(n)} 課` : `第二冊第 ${n} 課`);
+  return b === 4 ? `第四冊第 ${bookLessonNum(n)} 課` : (b === 3 ? `第三冊第 ${bookLessonNum(n)} 課` : (b === 1 ? `第一冊第 ${bookLessonNum(n)} 課` : `第二冊第 ${n} 課`));
 }
 function lessonShortLabel(n) {
   const b = bookOf(n);
-  return b === 3 ? `第三冊第${bookLessonNum(n)}課` : (b === 1 ? `第一冊第${bookLessonNum(n)}課` : `第二冊第${n}課`);
+  return b === 4 ? `第四冊第${bookLessonNum(n)}課` : (b === 3 ? `第三冊第${bookLessonNum(n)}課` : (b === 1 ? `第一冊第${bookLessonNum(n)}課` : `第二冊第${n}課`));
 }
 function bookTitle(n) {
   const b = bookOf(n);
-  return b === 3 ? '第三冊・當代中文課程' : (b === 1 ? '第一冊・當代中文課程' : '第二冊・當代中文課程');
+  return b === 4 ? '第四冊・當代中文課程' : (b === 3 ? '第三冊・當代中文課程' : (b === 1 ? '第一冊・當代中文課程' : '第二冊・當代中文課程'));
 }
 const COURSE_LESSONS = [
   { n: 101, zh: '歡迎你來臺灣！', en: 'Welcome to Taiwan!', topic: '自我介紹' },
@@ -1624,10 +1624,22 @@ const COURSE_LESSONS = [
   { n: 209, zh: '網購時代', en: 'The Age of Online Shopping', topic: '網購' },
   { n: 210, zh: '我住院了', en: 'I Am in the Hospital', topic: '醫療' },
   { n: 211, zh: '台灣故事', en: 'Stories of Taiwan', topic: '歷史' },
-  { n: 212, zh: '我要去投票', en: "I'm Going to Vote", topic: '選舉' }
+  { n: 212, zh: '我要去投票', en: "I'm Going to Vote", topic: '選舉' },
+  { n: 301, zh: '十七歲還是二十五歲？', en: '17 or 25-Years Old?', topic: '網路' },
+  { n: 302, zh: '眼睛、耳朵的饗宴', en: 'A Feast for the Eyes and Ears', topic: '藝術' },
+  { n: 303, zh: '雲端科技', en: 'Cloud Technology', topic: '科技' },
+  { n: 304, zh: '床該擺哪裡？', en: 'Where Should the Bed Go?', topic: '風水' },
+  { n: 305, zh: '有夢最美', en: 'Pursuing Your Dreams', topic: '夢想' },
+  { n: 306, zh: '天搖地動', en: 'Shaking Heavens and Trembling Earth', topic: '地震' },
+  { n: 307, zh: '大學生的事', en: 'College Student Matters', topic: '大學' },
+  { n: 308, zh: '他們的選擇', en: 'Their Choice', topic: '家庭' },
+  { n: 309, zh: '再談台灣故事', en: 'More on the Story of Taiwan', topic: '歷史' },
+  { n: 310, zh: '應徵', en: 'Applying for a Job', topic: '求職' },
+  { n: 311, zh: '文化、種族的大熔爐', en: 'The Big Cultural and Ethnic Melting Pot', topic: '文化' },
+  { n: 312, zh: '期待美好的未來', en: 'Looking Forward to a Beautiful Future', topic: '未來' }
 ];
 const COURSE_TABS = ['課文', '生詞', '語法', '練習', '文化', '補充'];
-const COURSE_PACK_LESSONS = [101, 102, 103, 104, 105, 106, 107, 108, 109, 110, 111, 112, 113, 114, 115, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 201, 202, 203, 204, 205, 206, 207, 208, 209, 210, 211, 212];
+const COURSE_PACK_LESSONS = [101, 102, 103, 104, 105, 106, 107, 108, 109, 110, 111, 112, 113, 114, 115, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 201, 202, 203, 204, 205, 206, 207, 208, 209, 210, 211, 212, 301, 302, 303, 304, 305, 306, 307, 308, 309, 310, 311, 312];
 const courseState = { lesson: 0, tab: '課文' };
 
 function isCourseUnlocked() {
