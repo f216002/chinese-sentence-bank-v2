@@ -866,6 +866,17 @@ function createCard(sentence, preview = false) {
   const node = $('cardTemplate').content.firstElementChild.cloneNode(true);
   node.querySelector('.category-pill').textContent = sentence.category || 'Other';
   node.querySelector('.record-id').textContent = preview ? 'PREVIEW' : sentence.recordId || '';
+  /* 課程記錄加註來源（課名＋分頁），方便在全域搜尋結果中辨識。 */
+  if (!preview) {
+    const meta = courseMeta(sentence);
+    if (meta.lesson) {
+      const badge = document.createElement('span');
+      badge.className = 'category-pill lesson-badge';
+      badge.textContent = `${lessonLabel(Number(meta.lesson))}${meta.section ? '・' + meta.section : ''}`;
+      badge.style.marginLeft = '6px';
+      node.querySelector('.category-pill').after(badge);
+    }
+  }
   const deleteButton = node.querySelector('.card-delete-button');
   deleteButton.hidden = preview;
   if (!preview) deleteButton.addEventListener('click', () => openDeleteDialog(sentence));
@@ -1230,8 +1241,13 @@ function courseMeta(sentence) {
 }
 
 function renderSentences() {
+  /* 搜尋啟用時（有關鍵字或主題篩選）涵蓋全資料庫，包含課程記錄；無搜尋條件時只顯示個人句庫。 */
+  const hasKeyword = ['keywordA', 'keywordB', 'keywordC'].some(id => normalizeSearchText($(id).value));
+  const hasTopicFilter = state.selectedCategories.size > 0 && state.selectedCategories.size < (state.categories || []).length;
+  const searching = hasKeyword || hasTopicFilter;
   const visible = state.sentences.filter(s => {
-    if (courseMeta(s).lesson) return false; /* course records live in the course view */
+    const meta = courseMeta(s);
+    if (meta.lesson && !searching) return false; /* 非搜尋時，課程記錄只在課程區顯示 */
     const haystack = normalizeSearchText([s.recordId,s.hindiSentence,romanHindiFor(s),s.chineseSentence,s.pinyin,s.hindiExplanation,s.category,s.tags].join(' '));
     const topicMatch = state.selectedCategories.size === 0 || [...sentenceTopics(s)].some(topic => state.selectedCategories.has(topic));
     return matchesKeywordExpression(haystack) && topicMatch;
@@ -1319,7 +1335,9 @@ function handlePreview() {
   const hindi = parsed.hindiSentence.trim();
   const exactDupe = state.sentences.find(s => (s.chineseSentence || '').trim() === chinese);
   if (exactDupe) {
-    $('parseMessage').textContent = `This Chinese sentence is already in your bank${exactDupe.recordId ? ` (${exactDupe.recordId})` : ''}. Saving it again would create a duplicate.`;
+    const dupeMeta = courseMeta(exactDupe);
+    const location = dupeMeta.lesson ? `${lessonLabel(Number(dupeMeta.lesson))}${dupeMeta.section ? '「' + dupeMeta.section + '」' : ''}` : 'My Sentence Bank';
+    $('parseMessage').textContent = `This Chinese sentence already exists in ${location}${exactDupe.recordId ? ` (${exactDupe.recordId})` : ''}. Saving it again would create a duplicate.`;
     return;
   }
   const hindiDupe = state.sentences.find(s => (s.hindiSentence || '').trim() === hindi && (s.chineseSentence || '').trim() !== chinese);
