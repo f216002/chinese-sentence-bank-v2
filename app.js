@@ -1,4 +1,115 @@
-const API_URL = 'https://script.google.com/macros/s/AKfycbw9trkW9RNCRSwWou_51Q-FP6aL7Lp8sy3zizSG83fzN1Urtd3ZiMc47RUfHDBTIMJfDw/exec';
+/* ---- Firebase backend (replaces Google Sheets + Apps Script) ----
+   Project: my-chinese-sentence-bank-v3 (shared with the v3 site).
+   v2 data lives under v2_-prefixed collections/paths so it never
+   collides with v3 data. Reads are public; writes need anonymous auth. */
+const firebaseConfig = {
+  apiKey: "AIzaSyChpInXumwIWaOrR4cU8KhNm1NK5-RdgQw",
+  authDomain: "my-chinese-sentence-bank-v3.firebaseapp.com",
+  projectId: "my-chinese-sentence-bank-v3",
+  storageBucket: "my-chinese-sentence-bank-v3.firebasestorage.app",
+  messagingSenderId: "178850974896",
+  appId: "1:178850974896:web:f1d40b2ed4e7218b553f75"
+};
+/* One-time migration still talks to the retired Apps Script backend. */
+const OLD_API_URL = 'https://script.google.com/macros/s/AKfycbw9trkW9RNCRSwWou_51Q-FP6aL7Lp8sy3zizSG83fzN1Urtd3ZiMc47RUfHDBTIMJfDw/exec';
+const SENTENCES_COL = 'v2_sentences';
+const META_COL = 'v2_meta';
+const SETTINGS_DOC = 'settings';
+const AUDIO_PREFIX = 'v2_audio/';
+
+let fbDb = null, fbAuth = null, fbStorage = null, fbFieldValue = null;
+let firebaseInitError = '';
+try {
+  if (!window.firebase) throw new Error('Firebase SDK failed to load.');
+  window.firebase.initializeApp(firebaseConfig);
+  fbDb = window.firebase.firestore();
+  fbAuth = window.firebase.auth();
+  fbStorage = window.firebase.storage();
+  fbFieldValue = window.firebase.firestore.FieldValue;
+} catch (err) {
+  firebaseInitError = (err && err.message) || String(err);
+}
+
+let authReadyPromise = null;
+function ensureAuth() {
+  if (firebaseInitError) return Promise.reject(new Error(firebaseInitError));
+  if (!authReadyPromise) {
+    authReadyPromise = fbAuth.signInAnonymously().then(cred => cred.user).catch(err => {
+      authReadyPromise = null;
+      const code = (err && err.code) || '';
+      if (code === 'auth/operation-not-allowed' || code === 'auth/admin-restricted-operation') {
+        throw new Error('Anonymous sign-in is disabled. In the Firebase console, open Authentication → Sign-in method and enable Anonymous.');
+      }
+      throw err;
+    });
+  }
+  return authReadyPromise;
+}
+
+const serverTimestamp = () => fbFieldValue.serverTimestamp();
+
+/* Firestore document -> sentence object used by the UI.
+   recordId is the Firestore document id (old Sheet Record IDs are kept as
+   document ids during migration, so existing links keep working). */
+function docToSentence(id, d) {
+  d = d || {};
+  const audioPath = d.audioPath || '';
+  return {
+    recordId: id,
+    hindiSentence: d.hindiSentence || '',
+    chineseSentence: d.chineseSentence || '',
+    pinyin: d.pinyin || '',
+    romanHindi: d.romanHindi || '',
+    hindiExplanation: d.hindiExplanation || '',
+    category: d.category || 'Other',
+    tags: d.tags || '',
+    aiSource: d.aiSource || '',
+    originalPaste: d.originalPaste || '',
+    favorite: !!d.favorite,
+    audioPath,
+    audioMime: d.audioMime || '',
+    standardAudioUrl: audioPath, /* truthy marker: existing UI checks keep working */
+    createdAt: d.createdAt || null,
+    updatedAt: d.updatedAt || null,
+  };
+}
+
+/* UI fields -> Firestore document data for a new sentence. */
+function sentenceDocData(fields) {
+  return {
+    hindiSentence: fields.hindiSentence || '',
+    chineseSentence: fields.chineseSentence || '',
+    pinyin: fields.pinyin || '',
+    romanHindi: fields.romanHindi || '',
+    hindiExplanation: fields.hindiExplanation || '',
+    category: fields.category || 'Other',
+    tags: fields.tags || '',
+    aiSource: fields.aiSource || '',
+    originalPaste: fields.originalPaste || '',
+    favorite: false,
+    audioPath: '',
+    audioMime: '',
+    createdAt: serverTimestamp(),
+    updatedAt: serverTimestamp(),
+  };
+}
+
+async function reloadSentences() {
+  const snap = await fbDb.collection(SENTENCES_COL).get();
+  state.sentences = snap.docs.map(d => docToSentence(d.id, d.data()));
+  $('sentenceCount').textContent = state.sentences.length;
+  saveBankCache();
+}
+
+function defaultSettings() {
+  return {
+    bankName: 'My Chinese Sentence Bank',
+    ownerName: '',
+    defaultVoice: 'zh-TW',
+    speechRate: 0.85,
+    categories: 'Daily Life, School, Home, Restaurant, Shopping, Bank, Hospital, Travel, Train & Bus, Airport, Work, Friends, Other',
+  };
+}
 const SAMPLE = `HINDI:\nमुझे बैंक से पैसे निकालने हैं।\n\nCHINESE:\n我要去銀行領錢。\n\nPINYIN:\nWǒ yào qù yínháng lǐng qián.\n\nROMAN:\nMujhe bank se paise nikaalne hain.\n\nEXPLANATION:\n我要 (wǒ yào) का अर्थ है “मैं ... करना चाहता/चाहती हूँ।”\n去 (qù) का अर्थ “जाना” है।\n銀行 (yínháng) का अर्थ “बैंक” है।\n領錢 (lǐng qián) का अर्थ बैंक से पैसे निकालना है।\n中文語序 (Zhōngwén yǔxù): 主語 (zhǔyǔ) + 要 (yào) + 去 (qù) + 地點 (dìdiǎn) + 動作 (dòngzuò)。\n\nCATEGORY:\nBank`;
 const AI_PROMPT = `You are a Taiwanese Mandarin teacher for a Hindi-speaking beginner. Convert the Hindi sentence below into natural Traditional Chinese used in Taiwan.\n\nHINDI SENTENCE:\n[Paste one Hindi sentence here]\n\nReturn ONLY the following labelled sections. Do not add an introduction or conclusion. Keep every label exactly as written and do not add Markdown symbols such as ** around the labels.\n\nHINDI:\n[Repeat the original Hindi sentence]\n\nCHINESE:\n[One natural Traditional Chinese sentence used in Taiwan]\n\nPINYIN:\n[Hanyu Pinyin with tone marks for the complete Chinese sentence]\n\nEXPLANATION:\n[Explain every Chinese word and the grammar in clear Hindi. Whenever any Chinese character, word, phrase, or example appears, immediately add its pinyin in parentheses. Use Traditional Chinese only.]\n\nCATEGORY:\n[Choose exactly one: Daily Life, School, Home, Restaurant, Shopping, Bank, Hospital, Travel, Train & Bus, Airport, Work, Friends, Other]\n\nTAGS:\n[Three to five short English keywords separated by commas]\n\nAI SOURCE:\n[Write ChatGPT or Gemini]`;
 const AI_PROMPT_TEMPLATE = `Role Persona: You are a professional Chinese language teacher whose native language is Hindi. Your students are beginners from India learning Chinese. Conduct all teaching, guidance, and explanations in warm, friendly, and professional Hindi throughout.
@@ -167,7 +278,7 @@ function playTeacherAudioUrl(audioUrl, button) {
   });
 }
 
-function playSentenceModel(sentence, button) {
+async function playSentenceModel(sentence, button) {
   if (!sentence.standardAudioUrl) {
     speakChinese(sentence.chineseSentence, button);
     return;
@@ -181,37 +292,15 @@ function playSentenceModel(sentence, button) {
 
   button.disabled = true;
   setModelAudioStatus(button, 'Loading the teacher recording…');
-  const callback = `receiveTeacherAudio${Date.now()}${Math.random().toString(36).slice(2, 8)}`;
-  const script = document.createElement('script');
-  const cleanup = () => {
-    delete window[callback];
-    script.remove();
+  try {
+    const url = await fbStorage.ref(sentence.audioPath || sentence.standardAudioUrl).getDownloadURL();
+    teacherAudioCache.set(sentence.recordId, url);
     button.disabled = false;
-  };
-
-  window[callback] = data => {
-    cleanup();
-    if (!data || !data.success || !data.audioBase64) {
-      setModelAudioStatus(button, `Teacher recording unavailable: ${(data && data.message) || 'unknown error'}`);
-      return;
-    }
-    try {
-      const binary = atob(data.audioBase64);
-      const bytes = new Uint8Array(binary.length);
-      for (let index = 0; index < binary.length; index += 1) bytes[index] = binary.charCodeAt(index);
-      const audioUrl = URL.createObjectURL(new Blob([bytes], {type:data.mimeType || 'audio/webm'}));
-      teacherAudioCache.set(sentence.recordId, audioUrl);
-      playTeacherAudioUrl(audioUrl, button);
-    } catch (_) {
-      setModelAudioStatus(button, 'The teacher recording was received but could not be decoded.');
-    }
-  };
-  script.onerror = () => {
-    cleanup();
-    setModelAudioStatus(button, 'Could not load the teacher recording. Please check the newest Apps Script deployment.');
-  };
-  script.src = `${API_URL}?action=audio&recordId=${encodeURIComponent(sentence.recordId)}&callback=${callback}&_=${Date.now()}`;
-  document.body.appendChild(script);
+    playTeacherAudioUrl(url, button);
+  } catch (_) {
+    button.disabled = false;
+    setModelAudioStatus(button, 'Teacher recording unavailable.');
+  }
 }
 
 async function getNaturalVoiceStream() {
@@ -481,15 +570,6 @@ function openAudioPinDialog(sentence, node) {
   setTimeout(() => $('audioPinInput').focus(), 50);
 }
 
-function blobToBase64(blob) {
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onload = () => resolve(String(reader.result || '').split(',')[1] || '');
-    reader.onerror = reject;
-    reader.readAsDataURL(blob);
-  });
-}
-
 async function submitTeacherAudio() {
   const pin = $('audioPinInput').value.trim();
   if (!pin) { $('audioSaveMessage').textContent = 'Enter the teacher PIN.'; return; }
@@ -498,52 +578,29 @@ async function submitTeacherAudio() {
   const button = $('confirmAudioSave');
   button.disabled = true;
   $('audioSaveMessage').textContent = 'Uploading the teacher recording…';
+  try { localStorage.setItem('csbSubmissionPin', pin); } catch (_) {}
 
   try {
-    const audioData = await blobToBase64(recording.blob);
-    const requestId = `audio-${Date.now()}-${Math.random().toString(36).slice(2,10)}`;
-    const form = document.createElement('form');
-    form.method = 'POST'; form.action = API_URL; form.target = 'submissionFrame'; form.hidden = true;
-    const fields = {action:'saveAudio', requestId, pin, recordId:sentence.recordId, mimeType:recording.mimeType, audioData};
-    Object.entries(fields).forEach(([name,value]) => {
-      const field = name === 'audioData' ? document.createElement('textarea') : document.createElement('input');
-      field.name = name; field.value = value; form.appendChild(field);
+    await ensureAuth();
+    const mime = recording.mimeType || 'audio/webm';
+    const ext = mime.includes('mp4') ? 'm4a' : 'webm';
+    const path = `${AUDIO_PREFIX}${sentence.recordId}.${ext}`;
+    await fbStorage.ref(path).put(recording.blob, { contentType: mime });
+    await fbDb.collection(SENTENCES_COL).doc(sentence.recordId).update({
+      audioPath: path,
+      audioMime: mime,
+      updatedAt: serverTimestamp(),
     });
-    document.body.appendChild(form); form.submit(); form.remove();
-    try { localStorage.setItem('csbSubmissionPin', pin); } catch (_) {}
-
-    let checks = 0;
-    const verify = setInterval(() => {
-      checks += 1;
-      const callback = `verifyAudioStatus${Date.now()}`;
-      const script = document.createElement('script');
-      window[callback] = data => {
-        delete window[callback]; script.remove();
-        if (data && data.success && data.standardAudioUrl) {
-          clearInterval(verify);
-          const saved = state.sentences.find(row => row.recordId === sentence.recordId);
-          if (saved) saved.standardAudioUrl = data.standardAudioUrl;
-          renderSentences();
-          $('audioSaveMessage').textContent = 'Teacher recording saved! The model button now uses your voice.';
-          button.disabled = false;
-          setTimeout(() => $('audioPinDialog').close(), 1300);
-        } else if (data && data.success === false) {
-          clearInterval(verify);
-          button.disabled = false;
-          $('audioSaveMessage').textContent = `Save failed: ${data.error || 'Unknown backend error.'}`;
-        } else if (checks >= 20) {
-          clearInterval(verify);
-          button.disabled = false;
-          $('audioSaveMessage').textContent = 'No confirmation was received. Please check that the newest BankApi.gs was deployed.';
-        }
-      };
-      script.onerror = () => { delete window[callback]; script.remove(); };
-      script.src = `${API_URL}?action=uploadStatus&requestId=${encodeURIComponent(requestId)}&callback=${callback}&_=${Date.now()}`;
-      document.body.appendChild(script);
-    }, 1500);
-  } catch (_) {
+    const saved = state.sentences.find(row => row.recordId === sentence.recordId);
+    if (saved) { saved.audioPath = path; saved.audioMime = mime; saved.standardAudioUrl = path; }
+    teacherAudioCache.delete(sentence.recordId);
+    renderSentences();
+    $('audioSaveMessage').textContent = 'Teacher recording saved! The model button now uses your voice.';
     button.disabled = false;
-    $('audioSaveMessage').textContent = 'The recording could not be prepared. Please record again.';
+    setTimeout(() => $('audioPinDialog').close(), 1300);
+  } catch (err) {
+    button.disabled = false;
+    $('audioSaveMessage').textContent = `Save failed: ${(err && err.message) || 'Unknown error.'}`;
   }
 }
 
@@ -559,56 +616,34 @@ function openDeleteDialog(sentence) {
   setTimeout(() => $('deletePinInput').focus(), 50);
 }
 
-function submitDeleteSentence() {
+async function submitDeleteSentence() {
   const pin = $('deletePinInput').value.trim();
   if (!pin) { $('deleteMessage').textContent = 'Enter the teacher PIN.'; return; }
   if (!pendingDeleteSentence) { $('deleteDialog').close(); return; }
 
   const sentence = pendingDeleteSentence;
   const button = $('confirmDelete');
-  const requestId = `delete-${Date.now()}-${Math.random().toString(36).slice(2,10)}`;
   button.disabled = true;
   $('deleteMessage').textContent = 'Deleting sentence…';
   try { localStorage.setItem('csbSubmissionPin', pin); } catch (_) {}
 
-  const form = document.createElement('form');
-  form.method = 'POST'; form.action = API_URL; form.target = 'submissionFrame'; form.hidden = true;
-  const fields = {action:'delete', requestId, pin, recordId:sentence.recordId};
-  Object.entries(fields).forEach(([name,value]) => {
-    const field = document.createElement('input');
-    field.name = name; field.value = value; form.appendChild(field);
-  });
-  document.body.appendChild(form); form.submit(); form.remove();
-
-  let checks = 0;
-  const verify = setInterval(() => {
-    checks += 1;
-    const callback = `verifyDeleteStatus${Date.now()}`;
-    const script = document.createElement('script');
-    window[callback] = data => {
-      delete window[callback]; script.remove();
-      if (data && data.success && data.deletedRecordId === sentence.recordId) {
-        clearInterval(verify);
-        state.sentences = state.sentences.filter(row => row.recordId !== sentence.recordId);
-        $('sentenceCount').textContent = state.sentences.length;
-        renderSentences();
-        pendingDeleteSentence = null;
-        $('deleteMessage').textContent = 'Sentence deleted.';
-        setTimeout(() => $('deleteDialog').close(), 650);
-      } else if (data && data.success === false) {
-        clearInterval(verify);
-        button.disabled = false;
-        $('deleteMessage').textContent = `Delete failed: ${data.error || 'Unknown backend error.'}`;
-      } else if (checks >= 20) {
-        clearInterval(verify);
-        button.disabled = false;
-        $('deleteMessage').textContent = 'No confirmation was received. Refresh before trying again.';
-      }
-    };
-    script.onerror = () => { delete window[callback]; script.remove(); };
-    script.src = `${API_URL}?action=uploadStatus&requestId=${encodeURIComponent(requestId)}&callback=${callback}&_=${Date.now()}`;
-    document.body.appendChild(script);
-  }, 1200);
+  try {
+    await ensureAuth();
+    if (sentence.audioPath) {
+      try { await fbStorage.ref(sentence.audioPath).delete(); } catch (_) { /* already gone */ }
+    }
+    teacherAudioCache.delete(sentence.recordId);
+    await fbDb.collection(SENTENCES_COL).doc(sentence.recordId).delete();
+    state.sentences = state.sentences.filter(row => row.recordId !== sentence.recordId);
+    $('sentenceCount').textContent = state.sentences.length;
+    renderSentences();
+    pendingDeleteSentence = null;
+    $('deleteMessage').textContent = 'Sentence deleted.';
+    setTimeout(() => $('deleteDialog').close(), 650);
+  } catch (err) {
+    button.disabled = false;
+    $('deleteMessage').textContent = `Delete failed: ${(err && err.message) || 'Unknown error.'}`;
+  }
 }
 
 /* Edit sentence: rebuild the record through create + delete, because the
@@ -632,7 +667,7 @@ function openEditDialog(sentence) {
     option.value = c;
     list.appendChild(option);
   });
-  $('editRecordNote').textContent = `Editing record ${sentence.recordId}. The old record is replaced only after the new version is saved.`;
+  $('editRecordNote').textContent = `Editing record ${sentence.recordId}. Changes update this record in place; any teacher recording stays attached.`;
   const hasAudio = !!(sentence.standardAudioUrl || teacherAudioCache.get(sentence.recordId) || recordingForSentence(sentence));
   $('editAudioNote').classList.toggle('hidden', !hasAudio);
   try { $('editPinInput').value = localStorage.getItem('csbSubmissionPin') || ''; } catch (_) {}
@@ -728,7 +763,10 @@ function buildEditedPaste() {
   return lines.map(([label, value]) => `${label}: ${value}`).join('\n');
 }
 
-function submitEdit() {
+/* Edit sentence: Firebase supports true in-place updates, so editing keeps the
+   same recordId and any attached teacher recording. New "補充" sentences
+   still create a fresh record. */
+async function submitEdit() {
   const pin = $('editPinInput').value.trim();
   if (!pin) { $('editMessage').textContent = 'Enter the teacher PIN.'; return; }
   if (!pendingEditSentence && !pendingSuppLesson) { $('editDialog').close(); return; }
@@ -749,112 +787,46 @@ function submitEdit() {
 
   const button = $('confirmEdit');
   button.disabled = true;
-  $('editMessage').textContent = 'Saving the new version…';
+  $('editMessage').textContent = isCreate ? '新增補充句子…' : 'Saving changes…';
   try { localStorage.setItem('csbSubmissionPin', pin); } catch (_) {}
 
   const content = buildEditedPaste();
-  const aiSource = $('editAiSource').value.trim() || 'ChatGPT / Gemini';
-  const beforeIds = new Set(state.sentences.map(s => s.recordId));
-
-  const form = document.createElement('form');
-  form.method = 'POST'; form.action = API_URL; form.target = 'submissionFrame'; form.hidden = true;
-  const fields = { action: 'create', pin, content, aiSource };
-  Object.entries(fields).forEach(([name, value]) => {
-    const field = name === 'content' ? document.createElement('textarea') : document.createElement('input');
-    field.name = name; field.value = value; form.appendChild(field);
+  const data = sentenceDocData({
+    ...edited,
+    category: $('editCategory').value.trim() || 'Other',
+    tags: $('editTags').value.trim(),
+    aiSource: $('editAiSource').value.trim() || 'ChatGPT / Gemini',
+    originalPaste: content,
   });
-  document.body.appendChild(form); form.submit(); form.remove();
 
-  let checks = 0;
-  const verify = setInterval(() => {
-    checks += 1;
-    const callback = `verifyEditSave${Date.now()}`;
-    const script = document.createElement('script');
-    window[callback] = data => {
-      delete window[callback]; script.remove();
-      const rows = data && data.success ? data.sentences || [] : [];
-      const added = rows.find(row =>
-        row.recordId &&
-        !beforeIds.has(row.recordId) &&
-        row.hindiSentence === edited.hindiSentence &&
-        row.chineseSentence === edited.chineseSentence &&
-        row.pinyin === edited.pinyin
-      );
-      if (added) {
-        clearInterval(verify);
-        if (isCreate) {
-          /* 新增補充句子：沒有舊記錄要刪，直接刷新。 */
-          state.sentences = rows;
-          $('sentenceCount').textContent = state.sentences.length;
-          courseMetaCache.clear();
-          renderSentences();
-          renderCourse();
-          pendingSuppLesson = null;
-          $('editMessage').textContent = '已新增補充句子。';
-          setTimeout(() => { $('editDialog').close(); $('confirmEdit').textContent = 'Save changes'; }, 700);
-        } else {
-          deleteOldRecordAfterEdit(original.recordId, rows);
-        }
-      } else if (checks >= 10) {
-        clearInterval(verify); button.disabled = false;
-        $('editMessage').textContent = 'The submission was sent, but confirmation is taking longer than expected. Refresh the page before trying again.';
-      }
-    };
-    script.onerror = () => { delete window[callback]; script.remove(); };
-    script.src = `${API_URL}?action=list&callback=${callback}&_=${Date.now()}`;
-    document.body.appendChild(script);
-  }, 1800);
-}
-
-function deleteOldRecordAfterEdit(oldRecordId, rows) {
-  const button = $('confirmEdit');
-  const pin = $('editPinInput').value.trim();
-  const requestId = `delete-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
-  $('editMessage').textContent = 'New version saved. Removing the old record…';
-
-  const form = document.createElement('form');
-  form.method = 'POST'; form.action = API_URL; form.target = 'submissionFrame'; form.hidden = true;
-  const fields = { action: 'delete', requestId, pin, recordId: oldRecordId };
-  Object.entries(fields).forEach(([name, value]) => {
-    const field = document.createElement('input');
-    field.name = name; field.value = value; form.appendChild(field);
-  });
-  document.body.appendChild(form); form.submit(); form.remove();
-
-  const finishWithRows = (keptRows) => {
-    state.sentences = keptRows;
-    $('sentenceCount').textContent = state.sentences.length;
-    renderSentences();
-  };
-  let checks = 0;
-  const verify = setInterval(() => {
-    checks += 1;
-    const callback = `verifyEditDelete${Date.now()}`;
-    const script = document.createElement('script');
-    window[callback] = data => {
-      delete window[callback]; script.remove();
-      if (data && data.success && data.deletedRecordId === oldRecordId) {
-        clearInterval(verify);
-        finishWithRows(rows.filter(row => row.recordId !== oldRecordId));
-        pendingEditSentence = null;
-        $('editMessage').textContent = 'Changes saved.';
-        setTimeout(() => $('editDialog').close(), 700);
-      } else if (data && data.success === false) {
-        clearInterval(verify);
-        finishWithRows(rows);
-        button.disabled = false;
-        $('editMessage').textContent = `New version saved, but the old record could not be removed (${data.error || 'unknown error'}). Please delete the old record manually.`;
-      } else if (checks >= 20) {
-        clearInterval(verify);
-        finishWithRows(rows);
-        button.disabled = false;
-        $('editMessage').textContent = 'New version saved, but removing the old record was not confirmed. Refresh and check for duplicates before trying again.';
-      }
-    };
-    script.onerror = () => { delete window[callback]; script.remove(); };
-    script.src = `${API_URL}?action=uploadStatus&requestId=${encodeURIComponent(requestId)}&callback=${callback}&_=${Date.now()}`;
-    document.body.appendChild(script);
-  }, 1200);
+  try {
+    await ensureAuth();
+    if (isCreate) {
+      /* 新增補充句子：建立新記錄。 */
+      await fbDb.collection(SENTENCES_COL).add(data);
+      await reloadSentences();
+      courseMetaCache.clear();
+      renderSentences();
+      renderCourse();
+      pendingSuppLesson = null;
+      $('editMessage').textContent = '已新增補充句子。';
+      setTimeout(() => { $('editDialog').close(); $('confirmEdit').textContent = 'Save changes'; }, 700);
+    } else {
+      /* 原地更新：保留 recordId、建立時間與錄音，只換內容欄位。 */
+      const { createdAt, audioPath, audioMime, favorite, ...contentFields } = data;
+      await fbDb.collection(SENTENCES_COL).doc(original.recordId).update(contentFields);
+      await reloadSentences();
+      courseMetaCache.clear();
+      renderSentences();
+      renderCourse();
+      pendingEditSentence = null;
+      $('editMessage').textContent = 'Changes saved.';
+      setTimeout(() => $('editDialog').close(), 700);
+    }
+  } catch (err) {
+    button.disabled = false;
+    $('editMessage').textContent = `Save failed: ${(err && err.message) || 'Unknown error.'}`;
+  }
 }
 
 function createCard(sentence, preview = false) {
@@ -1350,7 +1322,7 @@ function receiveBank(data) {
   $('ownerName').textContent = state.settings.ownerName && state.settings.ownerName !== 'Your Name' ? `Made for ${state.settings.ownerName}` : 'A personal language notebook';
   document.title = state.settings.bankName || 'My Chinese Sentence Bank';
   $('sentenceCount').textContent = state.sentences.length; $('categoryCount').textContent = state.categories.length;
-  $('apiStatus').className = 'live-status ready'; $('apiStatus').innerHTML = '<i></i> Google Sheet connected';
+  $('apiStatus').className = 'live-status ready'; $('apiStatus').innerHTML = '<i></i> Firebase connected';
   renderFilters(); renderSentences(); renderCourse();
   saveBankCache();
 }
@@ -1409,7 +1381,7 @@ function openPinDialog() {
   setTimeout(() => $('pinInput').focus(), 50);
 }
 
-function submitSentence() {
+async function submitSentence() {
   const pin = $('pinInput').value.trim();
   if (!pin) { $('saveMessage').textContent = 'Enter the submission PIN.'; return; }
   if (!state.preview) { $('pinDialog').close(); return; }
@@ -1419,65 +1391,43 @@ function submitSentence() {
   $('confirmSave').disabled = true;
   $('saveMessage').textContent = 'Saving sentence…';
   const submitted = { ...state.preview };
-  const beforeIds = new Set(state.sentences.map(s => s.recordId));
-  const fields = { action:'create', pin, content:submitted.originalPaste, aiSource:submitted.aiSource };
-  const form = document.createElement('form');
-  form.method = 'POST'; form.action = API_URL; form.target = 'submissionFrame'; form.hidden = true;
-  Object.entries(fields).forEach(([name,value]) => {
-    const field = name === 'content' ? document.createElement('textarea') : document.createElement('input');
-    field.name = name; field.value = value; form.appendChild(field);
-  });
-  document.body.appendChild(form); form.submit(); form.remove();
 
-  let checks = 0;
-  const verify = setInterval(() => {
-    checks += 1;
-    const callback = `verifySave${Date.now()}`;
-    window[callback] = data => {
-      delete window[callback]; script.remove();
-      const rows = data && data.success ? data.sentences || [] : [];
-      const added = rows.find(row =>
-        row.recordId &&
-        !beforeIds.has(row.recordId) &&
-        row.hindiSentence === submitted.hindiSentence &&
-        row.chineseSentence === submitted.chineseSentence &&
-        row.pinyin === submitted.pinyin
-      );
-      if (added) {
-        clearInterval(verify); state.sentences = rows;
-        $('sentenceCount').textContent = rows.length; renderSentences();
-        $('saveMessage').textContent = 'Saved successfully!'; $('confirmSave').disabled = false;
-        $('pasteInput').value = ''; $('previewPanel').classList.add('hidden');
-        setTimeout(() => { $('pinDialog').close(); $('libraryTitle').scrollIntoView({behavior:'smooth'}); }, 800);
-      } else if (checks >= 10) {
-        clearInterval(verify); $('confirmSave').disabled = false;
-        $('saveMessage').textContent = 'The submission was sent, but confirmation is taking longer than expected. Refresh the page before trying again.';
-      }
-    };
-    const script = document.createElement('script');
-    script.src = `${API_URL}?action=list&callback=${callback}&_=${Date.now()}`;
-    document.body.appendChild(script);
-  }, 1800);
+  try {
+    await ensureAuth();
+    await fbDb.collection(SENTENCES_COL).add(sentenceDocData(submitted));
+    await reloadSentences();
+    renderSentences();
+    $('saveMessage').textContent = 'Saved successfully!'; $('confirmSave').disabled = false;
+    $('pasteInput').value = ''; $('previewPanel').classList.add('hidden');
+    setTimeout(() => { $('pinDialog').close(); $('libraryTitle').scrollIntoView({behavior:'smooth'}); }, 800);
+  } catch (err) {
+    $('confirmSave').disabled = false;
+    $('saveMessage').textContent = `Save failed: ${(err && err.message) || 'Unknown error.'}`;
+  }
 }
 
-function loadBank(attempt = 1) {
+async function loadBank(attempt = 1) {
   const MAX_ATTEMPTS = 3;
-  const TIMEOUT_MS = 9000;
   window.__sentenceBankLoaded = false;
   $('apiStatus').className = 'live-status';
   $('apiStatus').innerHTML = attempt > 1 ? `<i></i> Retrying… (${attempt}/${MAX_ATTEMPTS})` : '<i></i> Connecting';
-  const callback = `sentenceBankCallback${Date.now()}${Math.random().toString(36).slice(2, 8)}`;
-  const script = document.createElement('script');
-  let finished = false;
-  const finish = (fn) => { if (finished) return; finished = true; clearTimeout(timer); delete window[callback]; script.remove(); fn(); };
-  const timer = setTimeout(() => finish(() => handleBankFailure(attempt, MAX_ATTEMPTS, 'Google Sheets took too long to respond.')), TIMEOUT_MS);
-  window[callback] = data => finish(() => {
-    if (!data || !data.success) { handleBankFailure(attempt, MAX_ATTEMPTS, 'The Google Sheets API returned an error.'); return; }
-    receiveBank(data);
-  });
-  script.onerror = () => finish(() => handleBankFailure(attempt, MAX_ATTEMPTS, 'Could not reach Google Sheets.'));
-  script.src = `${API_URL}?action=list&callback=${callback}&_=${Date.now()}`;
-  document.body.appendChild(script);
+  if (firebaseInitError) {
+    handleBankFailure(attempt, MAX_ATTEMPTS, `Firebase could not start: ${firebaseInitError}`);
+    return;
+  }
+  try {
+    const [snap, settingsSnap] = await Promise.all([
+      fbDb.collection(SENTENCES_COL).get(),
+      fbDb.collection(META_COL).doc(SETTINGS_DOC).get(),
+    ]);
+    const sentences = snap.docs.map(d => docToSentence(d.id, d.data()));
+    const settings = settingsSnap.exists ? { ...defaultSettings(), ...settingsSnap.data() } : defaultSettings();
+    /* Start anonymous auth in the background so writes are ready when needed. */
+    ensureAuth().catch(err => console.warn('Anonymous sign-in failed:', err && err.message));
+    receiveBank({ success: true, settings, sentences });
+  } catch (err) {
+    handleBankFailure(attempt, MAX_ATTEMPTS, `Could not reach Firebase: ${(err && err.message) || 'unknown error'}.`);
+  }
 }
 
 function handleBankFailure(attempt, maxAttempts, message) {
@@ -1958,31 +1908,17 @@ function stopTextPlay() {
     b.textContent = '▶ 連播';
   });
 }
-function fetchTeacherAudioUrl(sentence) {
-  return new Promise(resolve => {
-    if (!sentence.standardAudioUrl) { resolve(null); return; }
-    const cached = teacherAudioCache.get(sentence.recordId);
-    if (cached) { resolve(cached); return; }
-    const callback = `textPlayAudio${Date.now()}${Math.random().toString(36).slice(2, 8)}`;
-    const script = document.createElement('script');
-    const timer = setTimeout(() => { cleanup(); resolve(null); }, 8000);
-    const cleanup = () => { clearTimeout(timer); delete window[callback]; script.remove(); };
-    window[callback] = data => {
-      cleanup();
-      if (!data || !data.success || !data.audioBase64) { resolve(null); return; }
-      try {
-        const binary = atob(data.audioBase64);
-        const bytes = new Uint8Array(binary.length);
-        for (let i = 0; i < binary.length; i += 1) bytes[i] = binary.charCodeAt(i);
-        const url = URL.createObjectURL(new Blob([bytes], { type: data.mimeType || 'audio/webm' }));
-        teacherAudioCache.set(sentence.recordId, url);
-        resolve(url);
-      } catch (_) { resolve(null); }
-    };
-    script.onerror = () => { cleanup(); resolve(null); };
-    script.src = `${API_URL}?action=audio&recordId=${encodeURIComponent(sentence.recordId)}&callback=${callback}&_=${Date.now()}`;
-    document.body.appendChild(script);
-  });
+async function fetchTeacherAudioUrl(sentence) {
+  if (!sentence.standardAudioUrl) return null;
+  const cached = teacherAudioCache.get(sentence.recordId);
+  if (cached) return cached;
+  try {
+    const url = await fbStorage.ref(sentence.audioPath || sentence.standardAudioUrl).getDownloadURL();
+    teacherAudioCache.set(sentence.recordId, url);
+    return url;
+  } catch (_) {
+    return null;
+  }
 }
 function playTextGroup(lines, button) {
   if (textPlay.playing) { stopTextPlay(); return; }
@@ -2059,82 +1995,8 @@ async function loadPackPreview() {
     info.textContent = `讀取失敗：${err.message}。`;
   }
 }
-function createPackRecord(content, aiSource, pin, beforeIds) {
-  return new Promise(resolve => {
-    const form = document.createElement('form');
-    form.method = 'POST'; form.action = API_URL; form.target = 'submissionFrame'; form.hidden = true;
-    const fields = { action: 'create', pin, content, aiSource: aiSource || '當代中文課程2' };
-    Object.entries(fields).forEach(([name, value]) => {
-      const field = name === 'content' ? document.createElement('textarea') : document.createElement('input');
-      field.name = name; field.value = value; form.appendChild(field);
-    });
-    document.body.appendChild(form); form.submit(); form.remove();
-    const parsed = parsePaste(content);
-    let checks = 0;
-    const verify = setInterval(() => {
-      checks += 1;
-      const callback = `verifyPackSave${Date.now()}${Math.random().toString(36).slice(2, 8)}`;
-      const script = document.createElement('script');
-      window[callback] = data => {
-        delete window[callback]; script.remove();
-        const rows = data && data.success ? data.sentences || [] : [];
-        /* 用 beforeIds 找真正新增的那條：更新模式下舊記錄中文相同，不能只比中文。 */
-        const added = rows.find(row =>
-          row.recordId && !beforeIds.has(row.recordId) &&
-          (row.chineseSentence || '').trim() === (parsed.chineseSentence || '').trim()
-        );
-        if (added) {
-          clearInterval(verify);
-          state.sentences = rows;
-          resolve(true);
-        } else if (checks >= 10) {
-          clearInterval(verify);
-          resolve(false);
-        }
-      };
-      script.onerror = () => { delete window[callback]; script.remove(); };
-      script.src = `${API_URL}?action=list&callback=${callback}&_=${Date.now()}`;
-      document.body.appendChild(script);
-    }, 1800);
-  });
-}
-function deletePackRecord(recordId, pin) {
-  return new Promise(resolve => {
-    const requestId = `packdel-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
-    const form = document.createElement('form');
-    form.method = 'POST'; form.action = API_URL; form.target = 'submissionFrame'; form.hidden = true;
-    const fields = { action: 'delete', requestId, pin, recordId };
-    Object.entries(fields).forEach(([name, value]) => {
-      const field = document.createElement('input');
-      field.name = name; field.value = value; form.appendChild(field);
-    });
-    document.body.appendChild(form); form.submit(); form.remove();
-    let checks = 0;
-    const verify = setInterval(() => {
-      checks += 1;
-      const callback = `verifyPackDel${Date.now()}${Math.random().toString(36).slice(2, 8)}`;
-      const script = document.createElement('script');
-      window[callback] = data => {
-        delete window[callback]; script.remove();
-        if (data && data.success && data.deletedRecordId === recordId) {
-          clearInterval(verify);
-          resolve(true);
-        } else if (data && data.success === false) {
-          clearInterval(verify);
-          resolve(false);
-        } else if (checks >= 20) {
-          clearInterval(verify);
-          resolve(false);
-        }
-      };
-      script.onerror = () => { delete window[callback]; script.remove(); };
-      /* 刪除確認必須走 uploadStatus＋requestId：action=list 只回傳句子清單，
-         永遠不會帶 deletedRecordId，用它輪詢永遠等不到確認。 */
-      script.src = `${API_URL}?action=uploadStatus&requestId=${encodeURIComponent(requestId)}&callback=${callback}&_=${Date.now()}`;
-      document.body.appendChild(script);
-    }, 1200);
-  });
-}
+/* 內容包批次匯入：整包一次寫入 Firestore。
+   更新模式＝原地 update（保留 recordId、錄音、建立時間），不再建新刪舊。 */
 async function importPackRecords() {
   const pin = $('importPinInput').value.trim();
   const progress = $('importProgress');
@@ -2144,30 +2006,52 @@ async function importPackRecords() {
   const button = $('packImportButton');
   button.disabled = true;
   const total = packRecordsCache.length;
-  let done = 0, failed = 0, updated = 0;
-  const removedIds = new Set();
-  for (const item of packRecordsCache) {
-    const parsed = parsePaste(item.content);
-    const label = item.oldRecordId ? '更新' : '匯入';
-    progress.textContent = `${label}中 ${done + 1}/${total}：${(parsed.chineseSentence || '').slice(0, 18)}…`;
-    const beforeIds = new Set(state.sentences.map(s => s.recordId));
-    const ok = await createPackRecord(item.content, parsed.aiSource, pin, beforeIds);
-    if (ok) {
-      done += 1;
+  let added = 0, updated = 0;
+  progress.textContent = `批次寫入中 0/${total}…`;
+  try {
+    await ensureAuth();
+    const BATCH_LIMIT = 450; /* Firestore 每批上限 500 */
+    let batch = fbDb.batch();
+    let ops = 0;
+    const commitIfFull = async () => {
+      if (ops >= BATCH_LIMIT) { await batch.commit(); batch = fbDb.batch(); ops = 0; }
+    };
+    for (const item of packRecordsCache) {
+      const parsed = parsePaste(item.content);
+      const data = sentenceDocData({
+        hindiSentence: parsed.hindiSentence || '',
+        chineseSentence: parsed.chineseSentence || '',
+        pinyin: parsed.pinyin || '',
+        romanHindi: parsed.romanHindi || '',
+        hindiExplanation: parsed.hindiExplanation || '',
+        category: parsed.category || '課程',
+        tags: parsed.tags || '',
+        aiSource: parsed.aiSource || '當代中文課程2',
+        originalPaste: item.content,
+      });
       if (item.oldRecordId) {
-        const delOk = await deletePackRecord(item.oldRecordId, pin);
-        if (delOk) { removedIds.add(item.oldRecordId); updated += 1; }
-        else progress.textContent = `已新增但舊記錄刪除失敗（${item.oldRecordId}），請手動刪除。`;
+        /* 更新：只換內容欄位，保留 recordId、建立時間與錄音。 */
+        const { createdAt, audioPath, audioMime, favorite, ...contentFields } = data;
+        batch.update(fbDb.collection(SENTENCES_COL).doc(item.oldRecordId), contentFields);
+        updated += 1;
+      } else {
+        batch.set(fbDb.collection(SENTENCES_COL).doc(), data);
+        added += 1;
       }
-    } else failed += 1;
-    await new Promise(r => setTimeout(r, 600));
+      ops += 1;
+      if ((added + updated) % 50 === 0) progress.textContent = `批次寫入中 ${added + updated}/${total}…`;
+      await commitIfFull();
+    }
+    if (ops) await batch.commit();
+    await reloadSentences();
+    courseMetaCache.clear();
+    renderSentences();
+    renderCourse();
+    packRecordsCache = [];
+    progress.textContent = `完成：新增 ${added} 條${updated ? `，更新 ${updated} 條` : ''}。`;
+  } catch (err) {
+    progress.textContent = `匯入失敗：${(err && err.message) || '未知錯誤'}。請重整後再試。`;
   }
-  if (removedIds.size) state.sentences = state.sentences.filter(s => !removedIds.has(s.recordId));
-  courseMetaCache.clear();
-  renderSentences();
-  renderCourse();
-  packRecordsCache = [];
-  progress.textContent = `完成：新增 ${done - updated} 條${updated ? `，更新 ${updated} 條` : ''}${failed ? `，失敗 ${failed} 條（請重載內容包再試）` : ''}。`;
   button.disabled = true;
 }
 
@@ -2179,3 +2063,124 @@ $('packLoadButton').addEventListener('click', loadPackPreview);
 $('packImportButton').addEventListener('click', importPackRecords);
 $('importUpdateCheckbox').addEventListener('change', () => { if ($('packFileInput').files.length) loadPackPreview(); });
 document.addEventListener('keydown', e => { if (e.key === 'Escape' && textPlay.playing) stopTextPlay(); });
+
+/* =====================================================================
+   一次性遷移：Google Sheets + Apps Script -> Firebase
+   用法：在網址後加 ?migrate=1 開啟本頁，按「開始遷移」。
+   遷移完成並驗證後，這整段即可刪除。
+   ===================================================================== */
+function oldBackendJsonp(action, params) {
+  return new Promise((resolve, reject) => {
+    const callback = `migrateCb${Date.now()}${Math.random().toString(36).slice(2, 8)}`;
+    const script = document.createElement('script');
+    const timer = setTimeout(() => { cleanup(); reject(new Error(`舊後端 ${action} 超時`)); }, 30000);
+    const cleanup = () => { clearTimeout(timer); delete window[callback]; script.remove(); };
+    const qs = Object.entries(params || {}).map(([k, v]) => `${k}=${encodeURIComponent(v)}`).join('&');
+    window[callback] = data => { cleanup(); resolve(data); };
+    script.onerror = () => { cleanup(); reject(new Error(`舊後端 ${action} 連線失敗`)); };
+    script.src = `${OLD_API_URL}?action=${action}&callback=${callback}${qs ? '&' + qs : ''}&_=${Date.now()}`;
+    document.body.appendChild(script);
+  });
+}
+
+async function runMigration(log) {
+  const say = msg => { log(`${new Date().toLocaleTimeString()} ${msg}`); };
+  try {
+    say('① 讀取舊後端句子清單…');
+    const data = await oldBackendJsonp('list');
+    if (!data || !data.success) throw new Error('舊後端回傳失敗');
+    const oldRows = data.sentences || [];
+    say(`舊後端共有 ${oldRows.length} 條。`);
+
+    say('② Firebase 匿名登入…');
+    await ensureAuth();
+    say('登入成功。');
+
+    say('③ 寫入設定文件…');
+    const oldSettings = data.settings || {};
+    await fbDb.collection(META_COL).doc(SETTINGS_DOC).set({
+      bankName: oldSettings.bankName || 'My Chinese Sentence Bank',
+      ownerName: oldSettings.ownerName || '',
+      defaultVoice: oldSettings.defaultVoice || 'zh-TW',
+      speechRate: Number(oldSettings.speechRate) || 0.85,
+      categories: oldSettings.categories || defaultSettings().categories,
+      migratedAt: serverTimestamp(),
+    }, { merge: true });
+
+    say('④ 批次寫入句子（保留舊 Record ID）…');
+    const BATCH_LIMIT = 400;
+    let batch = fbDb.batch(), ops = 0, written = 0;
+    const audioRows = [];
+    for (const row of oldRows) {
+      const recordId = String(row.recordId || '').replace(/\//g, '_');
+      if (!recordId) continue;
+      const docData = {
+        hindiSentence: row.hindiSentence || '',
+        chineseSentence: row.chineseSentence || '',
+        pinyin: row.pinyin || '',
+        romanHindi: row.romanHindi || row.roman || '',
+        hindiExplanation: row.hindiExplanation || row.explanation || '',
+        category: row.category || 'Other',
+        tags: row.tags || '',
+        aiSource: row.aiSource || '',
+        originalPaste: row.originalPaste || '',
+        favorite: !!row.favorite,
+        audioPath: '',
+        audioMime: '',
+        createdAt: serverTimestamp(),
+        updatedAt: serverTimestamp(),
+        migratedFrom: 'sheets',
+      };
+      batch.set(fbDb.collection(SENTENCES_COL).doc(recordId), docData);
+      ops += 1; written += 1;
+      if (row.standardAudioUrl) audioRows.push({ recordId, mime: row.audioMime || '' });
+      if (ops >= BATCH_LIMIT) { await batch.commit(); batch = fbDb.batch(); ops = 0; say(`…已寫入 ${written}/${oldRows.length}`); }
+    }
+    if (ops) await batch.commit();
+    say(`句子寫入完成：${written} 條。`);
+
+    say(`⑤ 搬移老師錄音（${audioRows.length} 個）…`);
+    let audioOk = 0;
+    for (const { recordId } of audioRows) {
+      try {
+        const audio = await oldBackendJsonp('audio', { recordId });
+        if (!audio || !audio.success || !audio.audioBase64) { say(`錄音 ${recordId}：舊後端無資料，跳過`); continue; }
+        const binary = atob(audio.audioBase64);
+        const bytes = new Uint8Array(binary.length);
+        for (let i = 0; i < binary.length; i += 1) bytes[i] = binary.charCodeAt(i);
+        const mime = audio.mimeType || 'audio/webm';
+        const ext = mime.includes('mp4') ? 'm4a' : 'webm';
+        const path = `${AUDIO_PREFIX}${recordId}.${ext}`;
+        await fbStorage.ref(path).put(new Blob([bytes], { type: mime }), { contentType: mime });
+        await fbDb.collection(SENTENCES_COL).doc(recordId).update({ audioPath: path, audioMime: mime });
+        audioOk += 1;
+      } catch (err) {
+        say(`錄音 ${recordId} 失敗：${err.message}`);
+      }
+    }
+    say(`錄音搬移完成：${audioOk}/${audioRows.length}。`);
+
+    say('⑥ 驗證…');
+    const snap = await fbDb.collection(SENTENCES_COL).get();
+    say(`Firestore 現有 ${snap.size} 條（舊後端 ${oldRows.length} 條）。`);
+    say(snap.size === written ? '✅ 遷移完成，數量一致。' : '⚠️ 數量不一致，請檢查。');
+  } catch (err) {
+    say(`❌ 遷移失敗：${err.message}`);
+  }
+}
+
+(function initMigrationPanel() {
+  if (!location.search.includes('migrate=1')) return;
+  const panel = document.createElement('div');
+  panel.style.cssText = 'position:fixed;inset:auto 12px 12px auto;z-index:9999;background:#fff;border:2px solid #c00;border-radius:12px;padding:16px;max-width:420px;box-shadow:0 8px 30px rgba(0,0,0,.3);font-size:14px;';
+  panel.innerHTML = '<h3 style="margin:0 0 8px">Firebase 一次性遷移</h3>' +
+    '<p style="margin:0 0 8px">把舊 Google Sheet 的資料搬到 Firestore＋Storage。只可執行一次。</p>' +
+    '<button id="migrateStart" style="padding:8px 16px;font-size:15px">開始遷移</button>' +
+    '<pre id="migrateLog" style="max-height:260px;overflow:auto;background:#f6f6f6;padding:8px;margin-top:8px;white-space:pre-wrap"></pre>';
+  document.body.appendChild(panel);
+  const logEl = panel.querySelector('#migrateLog');
+  panel.querySelector('#migrateStart').addEventListener('click', async e => {
+    e.target.disabled = true;
+    await runMigration(msg => { logEl.textContent += msg + '\n'; logEl.scrollTop = logEl.scrollHeight; });
+  });
+})();
