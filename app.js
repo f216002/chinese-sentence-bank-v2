@@ -1567,20 +1567,20 @@ initPronunciationLab();
 loadBank();
 
 /* ================= Course module: 當代中文課程 ================= */
-/* 課號規則：1–15 ＝第二冊，101–115 ＝第一冊（第一冊第 X 課記為 100+X），201–212 ＝第三冊（第三冊第 X 課記為 200+X），301–312 ＝第四冊（第四冊第 X 課記為 300+X）。 */
-function bookOf(n) { n = Number(n); return n >= 301 ? 4 : (n >= 201 ? 3 : (n >= 101 ? 1 : 2)); }
-function bookLessonNum(n) { n = Number(n); return n >= 301 ? n - 300 : (n >= 201 ? n - 200 : (n >= 101 ? n - 100 : n)); }
+/* 課號規則：1–15 ＝第二冊，101–115 ＝第一冊（第一冊第 X 課記為 100+X），201–212 ＝第三冊（第三冊第 X 課記為 200+X），301–312 ＝第四冊（第四冊第 X 課記為 300+X），501–510 ＝第五冊（第五冊第 X 課記為 500+X）。 */
+function bookOf(n) { n = Number(n); return n >= 501 ? 5 : (n >= 301 ? 4 : (n >= 201 ? 3 : (n >= 101 ? 1 : 2))); }
+function bookLessonNum(n) { n = Number(n); return n >= 501 ? n - 500 : (n >= 301 ? n - 300 : (n >= 201 ? n - 200 : (n >= 101 ? n - 100 : n))); }
 function lessonLabel(n) {
   const b = bookOf(n);
-  return b === 4 ? `第四冊第 ${bookLessonNum(n)} 課` : (b === 3 ? `第三冊第 ${bookLessonNum(n)} 課` : (b === 1 ? `第一冊第 ${bookLessonNum(n)} 課` : `第二冊第 ${n} 課`));
+  return b === 5 ? `第五冊第 ${bookLessonNum(n)} 課` : (b === 4 ? `第四冊第 ${bookLessonNum(n)} 課` : (b === 3 ? `第三冊第 ${bookLessonNum(n)} 課` : (b === 1 ? `第一冊第 ${bookLessonNum(n)} 課` : `第二冊第 ${n} 課`)));
 }
 function lessonShortLabel(n) {
   const b = bookOf(n);
-  return b === 4 ? `第四冊第${bookLessonNum(n)}課` : (b === 3 ? `第三冊第${bookLessonNum(n)}課` : (b === 1 ? `第一冊第${bookLessonNum(n)}課` : `第二冊第${n}課`));
+  return b === 5 ? `第五冊第${bookLessonNum(n)}課` : (b === 4 ? `第四冊第${bookLessonNum(n)}課` : (b === 3 ? `第三冊第${bookLessonNum(n)}課` : (b === 1 ? `第一冊第${bookLessonNum(n)}課` : `第二冊第${n}課`)));
 }
 function bookTitle(n) {
   const b = bookOf(n);
-  return b === 4 ? '第四冊・當代中文課程' : (b === 3 ? '第三冊・當代中文課程' : (b === 1 ? '第一冊・當代中文課程' : '第二冊・當代中文課程'));
+  return b === 5 ? '第五冊・當代中文課程' : (b === 4 ? '第四冊・當代中文課程' : (b === 3 ? '第三冊・當代中文課程' : (b === 1 ? '第一冊・當代中文課程' : '第二冊・當代中文課程')));
 }
 const COURSE_LESSONS = [
   { n: 101, zh: '歡迎你來臺灣！', en: 'Welcome to Taiwan!', topic: '自我介紹' },
@@ -1636,10 +1636,20 @@ const COURSE_LESSONS = [
   { n: 309, zh: '再談台灣故事', en: 'More on the Story of Taiwan', topic: '歷史' },
   { n: 310, zh: '應徵', en: 'Applying for a Job', topic: '求職' },
   { n: 311, zh: '文化、種族的大熔爐', en: 'The Big Cultural and Ethnic Melting Pot', topic: '文化' },
-  { n: 312, zh: '期待美好的未來', en: 'Looking Forward to a Beautiful Future', topic: '未來' }
+  { n: 312, zh: '期待美好的未來', en: 'Looking Forward to a Beautiful Future', topic: '未來' },
+  { n: 501, zh: '言論自由的界線', en: 'The Boundaries of Free Speech', topic: '言論' },
+  { n: 502, zh: '關於基改食品，我有話要說', en: 'Speaking Up About GM Food', topic: '食安' },
+  { n: 503, zh: '整型好不好', en: 'Is Plastic Surgery a Good Idea?', topic: '整型' },
+  { n: 504, zh: '傳統與現代', en: 'Tradition and Modernity', topic: '文化' },
+  { n: 505, zh: '代理孕母，帶來幸福？', en: 'Surrogate Motherhood: Happiness?', topic: '倫理' },
+  { n: 506, zh: '死刑的存廢', en: 'The Death Penalty Debate', topic: '死刑' },
+  { n: 507, zh: '增富人稅＝減窮人苦？', en: 'Taxing the Rich to Help the Poor?', topic: '稅制' },
+  { n: 508, zh: '左右為難的難民問題', en: 'The Refugee Dilemma', topic: '難民' },
+  { n: 509, zh: '有核到底可不可？', en: 'Nuclear Power: Yes or No?', topic: '核能' },
+  { n: 510, zh: '同性婚姻合法化', en: 'Legalizing Same-Sex Marriage', topic: '婚姻' }
 ];
 const COURSE_TABS = ['課文', '生詞', '語法', '練習', '文化', '補充'];
-const COURSE_PACK_LESSONS = [101, 102, 103, 104, 105, 106, 107, 108, 109, 110, 111, 112, 113, 114, 115, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 201, 202, 203, 204, 205, 206, 207, 208, 209, 210, 211, 212, 301, 302, 303, 304, 305, 306, 307, 308, 309, 310, 311, 312];
+const COURSE_PACK_LESSONS = [101, 102, 103, 104, 105, 106, 107, 108, 109, 110, 111, 112, 113, 114, 115, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 201, 202, 203, 204, 205, 206, 207, 208, 209, 210, 211, 212, 301, 302, 303, 304, 305, 306, 307, 308, 309, 310, 311, 312, 501, 502, 503, 504, 505, 506, 507, 508, 509, 510];
 const courseState = { lesson: 0, tab: '課文' };
 
 function isCourseUnlocked() {
