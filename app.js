@@ -97,12 +97,19 @@ function sentenceDocData(fields) {
   };
 }
 
-/* 課程記錄按內容包順序號排列（課號×100000＋包內序號）；無序號者維持原相對順序排在後面。 */
+/* 課程記錄按內容包順序號排列（課號×100000＋包內序號）；個人句庫（無序號者）按建立時間倒序排列，最新在最上方。 */
 function sortSentencesBySeq(list) {
   list.sort((a, b) => {
-    const sa = (a.seq == null ? Number.MAX_SAFE_INTEGER : a.seq);
-    const sb = (b.seq == null ? Number.MAX_SAFE_INTEGER : b.seq);
-    return sa - sb;
+    const aIsCourse = (a.seq != null);
+    const bIsCourse = (b.seq != null);
+    if (aIsCourse && bIsCourse) return a.seq - b.seq;
+    if (aIsCourse) return -1;
+    if (bIsCourse) return 1;
+    /* 個人句子：最新在上。優先用 createdAt，其次用 recordId（內含日期，字典序即時間序）。 */
+    const aTime = (a.createdAt && typeof a.createdAt.toMillis === 'function') ? a.createdAt.toMillis() : 0;
+    const bTime = (b.createdAt && typeof b.createdAt.toMillis === 'function') ? b.createdAt.toMillis() : 0;
+    if (aTime !== bTime) return bTime - aTime;
+    return String(b.recordId || '').localeCompare(String(a.recordId || ''));
   });
   return list;
 }
