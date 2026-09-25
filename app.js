@@ -1241,19 +1241,57 @@ function courseMeta(sentence) {
 }
 
 function renderSentences() {
-  /* 搜尋啟用時（有關鍵字或主題篩選）涵蓋全資料庫，包含課程記錄；無搜尋條件時只顯示個人句庫。
-     課程記錄以 seq != null 判斷（課程內容包順序號），比 courseMeta 更直接可靠。 */
-  const hasKeyword = ['keywordA', 'keywordB', 'keywordC'].some(id => normalizeSearchText($(id).value));
-  const hasTopicFilter = state.selectedCategories.size > 0 && state.selectedCategories.size < (state.categories || []).length;
+  /* 搜尋：有关键字时搜尋全資料庫（含課程記錄）；無搜尋條件時只顯示個人句庫。
+     v20260925-23: 徹底簡化邏輯，確保課程記錄能被搜到。 */
+  const kwA = normalizeSearchText($('keywordA').value);
+  const kwB = normalizeSearchText($('keywordB').value);
+  const kwC = normalizeSearchText($('keywordC').value);
+  const hasKeyword = !!(kwA || kwB || kwC);
+  const totalCats = (state.categories || []).length;
+  const selCats = state.selectedCategories.size;
+  const hasTopicFilter = selCats > 0 && selCats < totalCats;
   const searching = hasKeyword || hasTopicFilter;
-  const visible = state.sentences.filter(s => {
-    const isCourseRecord = (s.seq != null);
-    if (isCourseRecord && !searching) return false; /* 非搜尋時，課程記錄只在課程區顯示 */
-    const haystack = normalizeSearchText([s.recordId,s.hindiSentence,romanHindiFor(s),s.chineseSentence,s.pinyin,s.hindiExplanation,s.category,s.tags].join(' '));
-    /* 主題篩選：只有當使用者選了「部分」主題時才過濾；全選或全不選都視為無限制（課程記錄的「課程」分類不在主題清單內，全選時不應被排除）。 */
-    const topicMatch = !hasTopicFilter || [...sentenceTopics(s)].some(topic => state.selectedCategories.has(topic));
-    return matchesKeywordExpression(haystack) && topicMatch;
-  });
+
+  const opAB = $('operatorAB') ? $('operatorAB').value : 'AND';
+  const opBC = $('operatorBC') ? $('operatorBC').value : 'AND';
+
+  const visible = [];
+  for (const s of state.sentences) {
+    const isCourse = (s.seq != null);
+    if (isCourse && !searching) continue; /* 非搜尋時跳過課程記錄 */
+
+    if (searching) {
+      const haystack = normalizeSearchText(
+        [s.recordId, s.hindiSentence, romanHindiFor(s), s.chineseSentence, s.pinyin, s.hindiExplanation, s.category, s.tags].join(' ')
+      );
+      /* 關鍵字匹配 */
+      let kwMatch = true;
+      const terms = [kwA, kwB, kwC].filter(Boolean);
+      if (terms.length > 0) {
+        kwMatch = haystack.includes(terms[0]);
+        if (terms.length > 1) {
+          const m2 = haystack.includes(terms[1]);
+          kwMatch = (opAB === 'OR') ? (kwMatch || m2) : (kwMatch && m2);
+        }
+        if (terms.length > 2) {
+          const m3 = haystack.includes(terms[2]);
+          kwMatch = (opBC === 'OR') ? (kwMatch || m3) : (kwMatch && m3);
+        }
+      }
+      if (!kwMatch) continue;
+
+      /* 主題匹配：只有部分選取時才過濾 */
+      if (hasTopicFilter) {
+        const known = new Set((state.categories || []).map(normalizeSearchText));
+        const sTopics = [s.category].concat(String(s.tags || '').split(/[,;|]/))
+          .map(normalizeSearchText).filter(t => known.has(t));
+        const anyMatch = sTopics.some(t => state.selectedCategories.has(t));
+        if (!anyMatch) continue;
+      }
+    }
+    visible.push(s);
+  }
+
   const grid = $('sentenceGrid'); grid.innerHTML = '';
   visible.forEach(s => grid.appendChild(createCard(s)));
   $('resultCount').textContent = `${visible.length} shown`;
