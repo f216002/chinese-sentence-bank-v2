@@ -1560,7 +1560,7 @@ const COURSE_LESSONS = [
   { n: 15, zh: '過春節', en: 'Celebrating Spring Festival', topic: '節慶' }
 ];
 const COURSE_TABS = ['課文', '生詞', '語法', '練習', '文化', '補充'];
-const COURSE_PACK_LESSONS = [1, 2, 3];
+const COURSE_PACK_LESSONS = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15];
 const courseState = { lesson: 0, tab: '課文' };
 
 function isCourseUnlocked() {
