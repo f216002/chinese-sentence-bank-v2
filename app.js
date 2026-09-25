@@ -44,11 +44,15 @@ let activeCardButton = null;
 let pendingModelSave = null;
 let pendingDeleteSentence = null;
 let pendingEditSentence = null;
+let pendingSuppLesson = null; /* 新增補充分頁句子時：目標課號；編輯既有記錄時為 null */
 
 function parsePaste(text) {
   const labels = ['HINDI', 'CHINESE', 'PINYIN', 'ROMAN', 'EXPLANATION', 'CATEGORY', 'TAGS', 'AI SOURCE', 'LESSON', 'SECTION', 'SPEAKER', 'POS', 'ZHUYIN'];
   const found = {};
-  const pattern = new RegExp(`(?:^|\\n)\\s*(?:\\*\\*)?\\s*(${labels.join('|')})\\s*:?\\s*(?:\\*\\*)?\\s*:?\\s*`, 'gi');
+  /* The whitespace after a label excludes newlines: an empty-valued label must
+     not swallow the line break, otherwise the next line's label is missed and
+     its text becomes this field's value. */
+  const pattern = new RegExp(`(?:^|\\n)\\s*(?:\\*\\*)?\\s*(${labels.join('|')})[ \\t]*:?[ \\t]*(?:\\*\\*)?[ \\t]*:?[ \\t]*`, 'gi');
   const matches = [...text.matchAll(pattern)];
   matches.forEach((match, index) => {
     const key = match[1].toUpperCase();
@@ -634,6 +638,38 @@ function openEditDialog(sentence) {
   try { $('editPinInput').value = localStorage.getItem('csbSubmissionPin') || ''; } catch (_) {}
   $('editMessage').textContent = '';
   $('confirmEdit').disabled = false;
+  $('confirmEdit').textContent = 'Save changes';
+  pendingSuppLesson = null;
+  updateEditWarnings();
+  $('editDialog').showModal();
+  setTimeout(() => $('editHindi').focus(), 50);
+}
+
+/* 新增補充句子：借用同一個編輯對話框，但走「建立」流程，不刪除舊記錄。 */
+function openSuppDialog(lessonNum) {
+  pendingEditSentence = null;
+  pendingSuppLesson = lessonNum;
+  $('editHindi').value = '';
+  $('editChinese').value = '';
+  $('editPinyin').value = '';
+  $('editRoman').value = '';
+  $('editExplanation').value = '';
+  $('editCategory').value = '課程';
+  $('editTags').value = `第${lessonNum}課, 補充`;
+  $('editAiSource').value = '老師補充';
+  const list = $('editCategoryList');
+  list.innerHTML = '';
+  (state.categories || []).forEach(c => {
+    const option = document.createElement('option');
+    option.value = c;
+    list.appendChild(option);
+  });
+  $('editRecordNote').textContent = `為第 ${lessonNum} 課新增補充句子，儲存後會出現在「補充」分頁。`;
+  $('editAudioNote').classList.add('hidden');
+  try { $('editPinInput').value = localStorage.getItem('csbSubmissionPin') || ''; } catch (_) {}
+  $('editMessage').textContent = '';
+  $('confirmEdit').disabled = false;
+  $('confirmEdit').textContent = '新增補充句子';
   updateEditWarnings();
   $('editDialog').showModal();
   setTimeout(() => $('editHindi').focus(), 50);
@@ -649,12 +685,13 @@ function updateEditWarnings() {
   if (pinyinText && !/^[A-ZĀÁǍÀĒÉĚÈĪÍǏÌŌÓǑÒŪÚǓÙǕǗǙǛ]/.test(pinyinText)) warnings.push('Pinyin: the first syllable usually starts with a capital letter.');
   const chinese = $('editChinese').value.trim();
   const hindi = $('editHindi').value.trim();
-  if (pendingEditSentence && chinese) {
-    const exactDupe = state.sentences.find(s => s.recordId !== pendingEditSentence.recordId && (s.chineseSentence || '').trim() === chinese);
+  const excludeId = pendingEditSentence ? pendingEditSentence.recordId : null;
+  if (chinese) {
+    const exactDupe = state.sentences.find(s => s.recordId !== excludeId && (s.chineseSentence || '').trim() === chinese);
     if (exactDupe) warnings.push(`This Chinese sentence already exists as another record${exactDupe.recordId ? ` (${exactDupe.recordId})` : ''}. Saving is blocked until you change it.`);
   }
-  if (pendingEditSentence && hindi) {
-    const hindiDupe = state.sentences.find(s => s.recordId !== pendingEditSentence.recordId && (s.hindiSentence || '').trim() === hindi && (s.chineseSentence || '').trim() !== chinese);
+  if (hindi) {
+    const hindiDupe = state.sentences.find(s => s.recordId !== excludeId && (s.hindiSentence || '').trim() === hindi && (s.chineseSentence || '').trim() !== chinese);
     if (hindiDupe) warnings.push(`The same Hindi sentence already exists with a different Chinese translation${hindiDupe.recordId ? ` (${hindiDupe.recordId})` : ''}. Check which version is correct before saving.`);
   }
   if (!warnings.length) { box.classList.add('hidden'); box.innerHTML = ''; return; }
@@ -677,7 +714,10 @@ function buildEditedPaste() {
     ['AI SOURCE', $('editAiSource').value.trim() || 'ChatGPT / Gemini'],
   ];
   /* Keep course labels so editing a lesson record does not drop it from the course view. */
-  if (pendingEditSentence) {
+  if (pendingSuppLesson) {
+    lines.push(['LESSON', String(pendingSuppLesson)]);
+    lines.push(['SECTION', '補充']);
+  } else if (pendingEditSentence) {
     const meta = courseMeta(pendingEditSentence);
     if (meta.lesson) lines.push(['LESSON', meta.lesson]);
     if (meta.section) lines.push(['SECTION', meta.section]);
@@ -691,8 +731,9 @@ function buildEditedPaste() {
 function submitEdit() {
   const pin = $('editPinInput').value.trim();
   if (!pin) { $('editMessage').textContent = 'Enter the teacher PIN.'; return; }
-  if (!pendingEditSentence) { $('editDialog').close(); return; }
-  const original = pendingEditSentence;
+  if (!pendingEditSentence && !pendingSuppLesson) { $('editDialog').close(); return; }
+  const original = pendingEditSentence; /* null = 新增補充句子 */
+  const isCreate = !original;
   const edited = {
     hindiSentence: $('editHindi').value.trim(),
     chineseSentence: $('editChinese').value.trim(),
@@ -703,7 +744,7 @@ function submitEdit() {
   const missing = [['Hindi', edited.hindiSentence], ['Chinese', edited.chineseSentence], ['Pinyin', edited.pinyin], ['Roman', edited.romanHindi], ['Explanation', edited.hindiExplanation]]
     .filter(([, value]) => !value).map(([label]) => label);
   if (missing.length) { $('editMessage').textContent = `Please fill in: ${missing.join(', ')}.`; return; }
-  const exactDupe = state.sentences.find(s => s.recordId !== original.recordId && (s.chineseSentence || '').trim() === edited.chineseSentence);
+  const exactDupe = state.sentences.find(s => s.recordId !== (original && original.recordId) && (s.chineseSentence || '').trim() === edited.chineseSentence);
   if (exactDupe) { $('editMessage').textContent = `Blocked: this Chinese sentence already exists as record ${exactDupe.recordId || 'another record'}.`; return; }
 
   const button = $('confirmEdit');
@@ -741,7 +782,19 @@ function submitEdit() {
       );
       if (added) {
         clearInterval(verify);
-        deleteOldRecordAfterEdit(original.recordId, rows);
+        if (isCreate) {
+          /* 新增補充句子：沒有舊記錄要刪，直接刷新。 */
+          state.sentences = rows;
+          $('sentenceCount').textContent = state.sentences.length;
+          courseMetaCache.clear();
+          renderSentences();
+          renderCourse();
+          pendingSuppLesson = null;
+          $('editMessage').textContent = '已新增補充句子。';
+          setTimeout(() => { $('editDialog').close(); $('confirmEdit').textContent = 'Save changes'; }, 700);
+        } else {
+          deleteOldRecordAfterEdit(original.recordId, rows);
+        }
       } else if (checks >= 10) {
         clearInterval(verify); button.disabled = false;
         $('editMessage').textContent = 'The submission was sent, but confirmation is taking longer than expected. Refresh the page before trying again.';
@@ -1532,7 +1585,7 @@ $('deletePinInput').addEventListener('keydown', e => { if (e.key === 'Enter') su
 $('closeDelete').addEventListener('click', () => { pendingDeleteSentence = null; $('deleteDialog').close(); });
 $('confirmEdit').addEventListener('click', submitEdit);
 $('editPinInput').addEventListener('keydown', e => { if (e.key === 'Enter') submitEdit(); });
-$('closeEdit').addEventListener('click', () => { pendingEditSentence = null; $('editDialog').close(); });
+$('closeEdit').addEventListener('click', () => { pendingEditSentence = null; pendingSuppLesson = null; $('confirmEdit').textContent = 'Save changes'; $('editDialog').close(); });
 ['editHindi', 'editChinese', 'editPinyin', 'editRoman', 'editExplanation'].forEach(id => $(id).addEventListener('input', updateEditWarnings));
 initPronunciationLab();
 loadBank();
@@ -1555,7 +1608,7 @@ const COURSE_LESSONS = [
   { n: 14, zh: '我要開始找工作了', en: "I'm Going to Start Job Hunting", topic: '求職' },
   { n: 15, zh: '過春節', en: 'Celebrating Spring Festival', topic: '節慶' }
 ];
-const COURSE_TABS = ['課文', '生詞', '語法', '練習', '文化'];
+const COURSE_TABS = ['課文', '生詞', '語法', '練習', '文化', '補充'];
 const COURSE_PACK_LESSONS = [1, 2, 3];
 const courseState = { lesson: 0, tab: '課文' };
 
@@ -1665,6 +1718,8 @@ function renderLessonView() {
   const content = $('lessonContent');
   content.innerHTML = '';
   const tabRecs = bySection[courseState.tab] || [];
+  /* 補充分頁永遠顯示：即使還沒有內容，老師也要能按「新增」。 */
+  if (courseState.tab === '補充') { renderSuppTab(content, tabRecs, n); return; }
   if (!tabRecs.length) {
     content.innerHTML = '<div class="loading-card">這個單元還沒有內容。</div>';
     return;
@@ -1857,6 +1912,42 @@ function renderInfoTab(content, recs, tabName) {
   });
 }
 
+/* ---- 補充：老師針對本課臨時加的句子 ---- */
+function renderSuppTab(content, recs, lessonNum) {
+  const bar = document.createElement('div');
+  bar.className = 'supp-bar';
+  const hint = document.createElement('p');
+  hint.className = 'supp-hint';
+  hint.textContent = '老師針對本課補充的句子：課堂上臨時加的例句、學生問到的句子，都可以記在這裡，跟著本課走。';
+  const addButton = document.createElement('button');
+  addButton.type = 'button';
+  addButton.className = 'primary-button';
+  addButton.textContent = '＋ 新增補充句子';
+  addButton.addEventListener('click', () => openSuppDialog(lessonNum));
+  bar.appendChild(hint);
+  bar.appendChild(addButton);
+  content.appendChild(bar);
+  if (!recs.length) {
+    const empty = document.createElement('div');
+    empty.className = 'loading-card';
+    empty.textContent = '還沒有補充內容，按上面按鈕新增第一句。';
+    content.appendChild(empty);
+    return;
+  }
+  recs.forEach(s => {
+    const card = createCard(s);
+    const speaker = courseMeta(s).speaker;
+    if (speaker) {
+      const badge = document.createElement('div');
+      badge.className = 'script-speaker';
+      badge.textContent = speaker;
+      badge.setAttribute('lang', 'zh-Hant');
+      card.insertBefore(badge, card.firstChild);
+    }
+    content.appendChild(card);
+  });
+}
+
 /* ---- 課文連播 ---- */
 let textPlay = { playing: false, queue: [], index: 0 };
 function stopTextPlay() {
@@ -1942,22 +2033,33 @@ async function loadPackPreview() {
     const records = splitPackRecords(text);
     if (!records.length) throw new Error('檔案中沒有找到記錄');
     const lessonKey = String(parsePaste(records[0]).lesson || '');
-    const existing = new Set(lessonRecords(lessonKey).map(s => (s.chineseSentence || '').trim()));
-    const fresh = records.filter(r => {
+    const updateMode = $('importUpdateCheckbox').checked;
+    const existingByChinese = new Map();
+    lessonRecords(lessonKey).forEach(s => existingByChinese.set((s.chineseSentence || '').trim(), s));
+    const items = [];
+    records.forEach(r => {
       const p = parsePaste(r);
-      return p.chineseSentence && !existing.has(p.chineseSentence.trim());
+      if (!p.chineseSentence) return;
+      const old = existingByChinese.get(p.chineseSentence.trim());
+      if (old && !updateMode) return; /* 已存在且未勾更新：跳過 */
+      items.push({
+        content: r,
+        oldRecordId: old ? old.recordId : null,
+        hasAudio: !!(old && (old.standardAudioUrl || teacherAudioCache.get(old.recordId) || recordingForSentence(old))),
+      });
     });
-    packRecordsCache = fresh;
-    const dupes = records.length - fresh.length;
+    packRecordsCache = items;
+    const updates = items.filter(i => i.oldRecordId).length;
+    const fresh = items.length - updates;
     const lessonLabel = lessonKey ? `第 ${lessonKey} 課` : '內容包';
-    info.textContent = `${lessonLabel}：${records.length} 條記錄，可匯入 ${fresh.length} 條${dupes ? `（${dupes} 條已存在，自動跳過）` : ''}。`;
+    info.textContent = `${lessonLabel}：${records.length} 條記錄，${fresh} 條新增${updates ? `，${updates} 條更新（取代舊記錄）` : ''}。`;
     try { $('importPinInput').value = localStorage.getItem('csbSubmissionPin') || ''; } catch (_) {}
-    importButton.disabled = fresh.length === 0;
+    importButton.disabled = items.length === 0;
   } catch (err) {
     info.textContent = `讀取失敗：${err.message}。`;
   }
 }
-function createPackRecord(content, aiSource, pin) {
+function createPackRecord(content, aiSource, pin, beforeIds) {
   return new Promise(resolve => {
     const form = document.createElement('form');
     form.method = 'POST'; form.action = API_URL; form.target = 'submissionFrame'; form.hidden = true;
@@ -1976,10 +2078,10 @@ function createPackRecord(content, aiSource, pin) {
       window[callback] = data => {
         delete window[callback]; script.remove();
         const rows = data && data.success ? data.sentences || [] : [];
+        /* 用 beforeIds 找真正新增的那條：更新模式下舊記錄中文相同，不能只比中文。 */
         const added = rows.find(row =>
-          row.chineseSentence === parsed.chineseSentence &&
-          row.pinyin === parsed.pinyin &&
-          row.hindiSentence === parsed.hindiSentence
+          row.recordId && !beforeIds.has(row.recordId) &&
+          (row.chineseSentence || '').trim() === (parsed.chineseSentence || '').trim()
         );
         if (added) {
           clearInterval(verify);
@@ -1996,6 +2098,38 @@ function createPackRecord(content, aiSource, pin) {
     }, 1800);
   });
 }
+function deletePackRecord(recordId, pin) {
+  return new Promise(resolve => {
+    const requestId = `packdel-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
+    const form = document.createElement('form');
+    form.method = 'POST'; form.action = API_URL; form.target = 'submissionFrame'; form.hidden = true;
+    const fields = { action: 'delete', requestId, pin, recordId };
+    Object.entries(fields).forEach(([name, value]) => {
+      const field = document.createElement('input');
+      field.name = name; field.value = value; form.appendChild(field);
+    });
+    document.body.appendChild(form); form.submit(); form.remove();
+    let checks = 0;
+    const verify = setInterval(() => {
+      checks += 1;
+      const callback = `verifyPackDel${Date.now()}${Math.random().toString(36).slice(2, 8)}`;
+      const script = document.createElement('script');
+      window[callback] = data => {
+        delete window[callback]; script.remove();
+        if (data && data.success && data.deletedRecordId === recordId) {
+          clearInterval(verify);
+          resolve(true);
+        } else if (checks >= 12) {
+          clearInterval(verify);
+          resolve(false);
+        }
+      };
+      script.onerror = () => { delete window[callback]; script.remove(); };
+      script.src = `${API_URL}?action=list&callback=${callback}&_=${Date.now()}`;
+      document.body.appendChild(script);
+    }, 1500);
+  });
+}
 async function importPackRecords() {
   const pin = $('importPinInput').value.trim();
   const progress = $('importProgress');
@@ -2005,19 +2139,30 @@ async function importPackRecords() {
   const button = $('packImportButton');
   button.disabled = true;
   const total = packRecordsCache.length;
-  let done = 0, failed = 0;
-  for (const content of packRecordsCache) {
-    const parsed = parsePaste(content);
-    progress.textContent = `匯入中 ${done + 1}/${total}：${(parsed.chineseSentence || '').slice(0, 18)}…`;
-    const ok = await createPackRecord(content, parsed.aiSource, pin);
-    if (ok) done += 1; else failed += 1;
+  let done = 0, failed = 0, updated = 0;
+  const removedIds = new Set();
+  for (const item of packRecordsCache) {
+    const parsed = parsePaste(item.content);
+    const label = item.oldRecordId ? '更新' : '匯入';
+    progress.textContent = `${label}中 ${done + 1}/${total}：${(parsed.chineseSentence || '').slice(0, 18)}…`;
+    const beforeIds = new Set(state.sentences.map(s => s.recordId));
+    const ok = await createPackRecord(item.content, parsed.aiSource, pin, beforeIds);
+    if (ok) {
+      done += 1;
+      if (item.oldRecordId) {
+        const delOk = await deletePackRecord(item.oldRecordId, pin);
+        if (delOk) { removedIds.add(item.oldRecordId); updated += 1; }
+        else progress.textContent = `已新增但舊記錄刪除失敗（${item.oldRecordId}），請手動刪除。`;
+      }
+    } else failed += 1;
     await new Promise(r => setTimeout(r, 600));
   }
+  if (removedIds.size) state.sentences = state.sentences.filter(s => !removedIds.has(s.recordId));
   courseMetaCache.clear();
   renderSentences();
   renderCourse();
   packRecordsCache = [];
-  progress.textContent = `完成：成功 ${done} 條${failed ? `，失敗 ${failed} 條（請重載內容包再試）` : ''}。`;
+  progress.textContent = `完成：新增 ${done - updated} 條${updated ? `，更新 ${updated} 條` : ''}${failed ? `，失敗 ${failed} 條（請重載內容包再試）` : ''}。`;
   button.disabled = true;
 }
 
@@ -2027,4 +2172,5 @@ $('coursePinInput').addEventListener('keydown', e => { if (e.key === 'Enter') un
 $('lessonBackButton').addEventListener('click', () => { courseState.lesson = 0; renderLessonGrid(); $('courseSection').scrollIntoView({ behavior: 'smooth' }); });
 $('packLoadButton').addEventListener('click', loadPackPreview);
 $('packImportButton').addEventListener('click', importPackRecords);
+$('importUpdateCheckbox').addEventListener('change', () => { if ($('packFileInput').files.length) loadPackPreview(); });
 document.addEventListener('keydown', e => { if (e.key === 'Escape' && textPlay.playing) stopTextPlay(); });
