@@ -714,7 +714,7 @@ function openSuppDialog(lessonNum) {
   $('editRoman').value = '';
   $('editExplanation').value = '';
   $('editCategory').value = '課程';
-  $('editTags').value = `第${lessonNum}課, 補充`;
+  $('editTags').value = `${lessonShortLabel(lessonNum)}, 補充`;
   $('editAiSource').value = '老師補充';
   const list = $('editCategoryList');
   list.innerHTML = '';
@@ -723,7 +723,7 @@ function openSuppDialog(lessonNum) {
     option.value = c;
     list.appendChild(option);
   });
-  $('editRecordNote').textContent = `為第 ${lessonNum} 課新增補充句子，儲存後會出現在「補充」分頁。`;
+  $('editRecordNote').textContent = `為${lessonShortLabel(lessonNum)}新增補充句子，儲存後會出現在「補充」分頁。`;
   $('editAudioNote').classList.add('hidden');
   try { $('editPinInput').value = localStorage.getItem('csbSubmissionPin') || ''; } catch (_) {}
   $('editMessage').textContent = '';
@@ -1567,7 +1567,34 @@ initPronunciationLab();
 loadBank();
 
 /* ================= Course module: 當代中文課程 ================= */
+/* 課號規則：1–15 ＝第二冊，101–115 ＝第一冊（第一冊第 X 課記為 100+X）。 */
+function bookOf(n) { return Number(n) >= 101 ? 1 : 2; }
+function bookLessonNum(n) { return Number(n) >= 101 ? Number(n) - 100 : Number(n); }
+function lessonLabel(n) {
+  return bookOf(n) === 1 ? `第一冊第 ${bookLessonNum(n)} 課` : `第二冊第 ${n} 課`;
+}
+function lessonShortLabel(n) {
+  return bookOf(n) === 1 ? `第一冊第${bookLessonNum(n)}課` : `第二冊第${n}課`;
+}
+function bookTitle(n) {
+  return bookOf(n) === 1 ? '第一冊・當代中文課程' : '第二冊・當代中文課程';
+}
 const COURSE_LESSONS = [
+  { n: 101, zh: '歡迎你來臺灣！', en: 'Welcome to Taiwan!', topic: '自我介紹' },
+  { n: 102, zh: '我的家人', en: 'My Family', topic: '家人' },
+  { n: 103, zh: '週末做什麼？', en: 'What Are You Doing Over the Weekend?', topic: '休閒' },
+  { n: 104, zh: '請問一共多少錢？', en: 'Excuse Me. How Much Does That Cost in Total?', topic: '購物' },
+  { n: 105, zh: '牛肉麵真好吃', en: 'Beef Noodles Are Really Delicious', topic: '飲食' },
+  { n: 106, zh: '他們學校在山上', en: 'Their School Is Up in the Mountains', topic: '方位' },
+  { n: 107, zh: '早上九點去KTV', en: "Going to KTV at 9 O'clock in the Morning", topic: '時間' },
+  { n: 108, zh: '坐火車去臺南', en: 'Taking a Train to Tainan', topic: '交通' },
+  { n: 109, zh: '放假去哪裡玩？', en: 'Where Will You Go for the Holidays?', topic: '假期' },
+  { n: 110, zh: '臺灣的水果很好吃', en: 'The Fruit in Taiwan Tastes Really Good', topic: '外貌' },
+  { n: 111, zh: '我要租房子', en: 'I Would Like to Rent a Place', topic: '租屋' },
+  { n: 112, zh: '你在臺灣學多久的中文？', en: 'How Long Have You Been Studying Chinese in Taiwan?', topic: '學習' },
+  { n: 113, zh: '生日快樂', en: 'Happy Birthday', topic: '社交' },
+  { n: 114, zh: '天氣這麼冷！', en: "It's So Cold!", topic: '天氣' },
+  { n: 115, zh: '我很不舒服', en: "I Don't Feel Well", topic: '生病' },
   { n: 1, zh: '請問，到師大怎麼走？', en: 'Excuse Me. How Do You Get to Shida?', topic: '問路' },
   { n: 2, zh: '還是坐捷運吧！', en: 'Take the MRT Instead!', topic: '交通' },
   { n: 3, zh: '你的中文進步了！', en: 'Your Chinese Has Improved!', topic: '學習' },
@@ -1585,7 +1612,7 @@ const COURSE_LESSONS = [
   { n: 15, zh: '過春節', en: 'Celebrating Spring Festival', topic: '節慶' }
 ];
 const COURSE_TABS = ['課文', '生詞', '語法', '練習', '文化', '補充'];
-const COURSE_PACK_LESSONS = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15];
+const COURSE_PACK_LESSONS = [101, 102, 103, 104, 105, 106, 107, 108, 109, 110, 111, 112, 113, 114, 115, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15];
 const courseState = { lesson: 0, tab: '課文' };
 
 function isCourseUnlocked() {
@@ -1627,19 +1654,28 @@ function renderLessonGrid() {
   const grid = $('lessonGrid');
   grid.classList.remove('hidden');
   grid.innerHTML = '';
+  let lastBook = 0;
   COURSE_LESSONS.forEach(lesson => {
+    const bk = bookOf(lesson.n);
+    if (bk !== lastBook) {
+      lastBook = bk;
+      const divider = document.createElement('div');
+      divider.className = 'book-divider';
+      divider.textContent = bookTitle(lesson.n);
+      grid.appendChild(divider);
+    }
     const recs = lessonRecords(lesson.n);
     const hasPack = COURSE_PACK_LESSONS.includes(lesson.n);
     const card = document.createElement('button');
     card.type = 'button';
     card.className = 'lesson-card' + (recs.length ? '' : ' lesson-card-empty');
     card.innerHTML = `
-      <span class="lesson-num">第 ${lesson.n} 課</span>
+      <span class="lesson-num">${lessonLabel(lesson.n)}</span>
       <span class="lesson-zh" lang="zh-Hant">${lesson.zh}</span>
       <span class="lesson-en">${lesson.en}</span>
       <span class="lesson-topic">${lesson.topic}</span>
       <span class="lesson-status">${recs.length ? `已匯入 ${recs.length} 條` : (hasPack ? '尚未匯入' : '準備中')}</span>`;
-    card.setAttribute('aria-label', `第 ${lesson.n} 課 ${lesson.zh}`);
+    card.setAttribute('aria-label', `${lessonLabel(lesson.n)} ${lesson.zh}`);
     if (recs.length) {
       card.addEventListener('click', () => { courseState.lesson = lesson.n; courseState.tab = '課文'; renderLessonView(); });
     } else {
@@ -1673,7 +1709,7 @@ function renderLessonView() {
   const header = $('lessonHeader');
   const goals = bySection['目標'] || [];
   header.innerHTML = `
-    <div class="lesson-header-top"><span class="lesson-num">第 ${lesson.n} 課</span><span class="lesson-topic">${lesson.topic}</span></div>
+    <div class="lesson-header-top"><span class="lesson-num">${lessonLabel(lesson.n)}</span><span class="lesson-topic">${lesson.topic}</span></div>
     <h3 class="lesson-header-zh" lang="zh-Hant">${lesson.zh}</h3>
     <p class="lesson-header-en">${lesson.en}</p>
     ${goals.map(s => `<div class="lesson-goals"><strong>學習目標</strong><p lang="hi">${escapeHtml(s.hindiExplanation || s.hindiSentence || '')}</p></div>`).join('')}`;
@@ -2027,8 +2063,8 @@ async function loadPackPreview() {
     packRecordsCache = items;
     const updates = items.filter(i => i.oldRecordId).length;
     const fresh = items.length - updates;
-    const lessonLabel = lessonKey ? `第 ${lessonKey} 課` : '內容包';
-    info.textContent = `${lessonLabel}：${records.length} 條記錄，${fresh} 條新增${updates ? `，${updates} 條更新（取代舊記錄）` : ''}。`;
+    const lessonLabelText = lessonKey ? lessonLabel(Number(lessonKey)) : '內容包';
+    info.textContent = `${lessonLabelText}：${records.length} 條記錄，${fresh} 條新增${updates ? `，${updates} 條更新（取代舊記錄）` : ''}。`;
     try { $('importPinInput').value = localStorage.getItem('csbSubmissionPin') || ''; } catch (_) {}
     importButton.disabled = items.length === 0;
   } catch (err) {
