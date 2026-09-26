@@ -1629,7 +1629,7 @@ function lessonShortLabel(n) {
 }
 function bookTitle(n) {
   const b = bookOf(n);
-  return b === 6 ? '第六冊・當代中文課程' : (b === 5 ? '第五冊・當代中文課程' : (b === 4 ? '第四冊・當代中文課程' : (b === 3 ? '第三冊・當代中文課程' : (b === 1 ? '第一冊・當代中文課程' : '第二冊・當代中文課程'))));
+  return b === 6 ? '第六冊' : (b === 5 ? '第五冊' : (b === 4 ? '第四冊' : (b === 3 ? '第三冊' : (b === 1 ? '第一冊' : '第二冊'))));
 }
 const COURSE_LESSONS = [
   { n: 101, zh: '歡迎你來臺灣！', en: 'Welcome to Taiwan!', topic: '自我介紹' },
@@ -2236,3 +2236,4 @@ $('packLoadButton').addEventListener('click', loadPackPreview);
 $('packImportButton').addEventListener('click', importPackRecords);
 $('importUpdateCheckbox').addEventListener('change', () => { if ($('packFileInput').files.length) loadPackPreview(); });
 document.addEventListener('keydown', e => { if (e.key === 'Escape' && textPlay.playing) stopTextPlay(); });
+
