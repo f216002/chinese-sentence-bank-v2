@@ -868,6 +868,9 @@ function createCard(sentence, preview = false) {
   const speak = node.querySelector('.speak-button');
   speak.title = sentence.standardAudioUrl ? 'Play teacher model voice' : 'Play browser voice';
   speak.addEventListener('click', () => playSentenceModel(sentence, speak));
+  const dlButton = node.querySelector('.download-button');
+  dlButton.hidden = !sentence.standardAudioUrl;
+  dlButton.addEventListener('click', () => downloadTeacherAudio(sentence, dlButton));
   const recordButton = node.querySelector('.card-record-button');
   const playButton = node.querySelector('.card-play-button');
   const saveModelButton = node.querySelector('.card-save-model-button');
@@ -1936,6 +1939,7 @@ function createVocabCard(sentence) {
     <div class="vocab-example"></div>
     <div class="vocab-actions">
       <button type="button" class="icon-button vocab-speak" aria-label="Play Chinese" title="Play Chinese">🔊</button>
+      <button type="button" class="icon-button vocab-download" aria-label="Download recording" title="Download recording" hidden>⤓</button>
       <button type="button" class="icon-button card-record-button" aria-label="Record your voice" title="Record">🎙</button>
       <button type="button" class="icon-button card-play-button" aria-label="Play your recording" title="Play recording">▶</button>
       <button type="button" class="icon-button card-save-model-button" aria-label="Save as teacher model" title="Save as teacher model">💾</button>
@@ -1957,6 +1961,9 @@ function createVocabCard(sentence) {
   exampleEl.hidden = !sentence.hindiExplanation;
   node.querySelector('.vocab-hindi-speak').addEventListener('click', e => speakHindi(sentence.hindiSentence, e.currentTarget));
   node.querySelector('.vocab-speak').addEventListener('click', e => playSentenceModel(sentence, e.currentTarget));
+  const vocabDl = node.querySelector('.vocab-download');
+  vocabDl.hidden = !sentence.standardAudioUrl;
+  vocabDl.addEventListener('click', () => downloadTeacherAudio(sentence, vocabDl));
   node.querySelector('.card-record-button').addEventListener('click', () => toggleCardRecording(node, sentence, false));
   node.querySelector('.card-play-button').addEventListener('click', () => {
     const recording = recordingForSentence(sentence);
@@ -2077,6 +2084,33 @@ async function fetchTeacherAudioUrl(sentence) {
     return url;
   } catch (_) {
     return null;
+  }
+}
+/* 下載老師錄音檔：只有 Storage 真的有檔案的句子才顯示下載鈕
+  （瀏覽器 TTS 即時發音沒有檔案可下載）。 */
+async function downloadTeacherAudio(sentence, button) {
+  const url = await fetchTeacherAudioUrl(sentence);
+  if (!url) return;
+  const rawPath = sentence.audioPath || sentence.standardAudioUrl || '';
+  const fileName = String(rawPath).split('/').pop() || `${sentence.recordId || 'recording'}.webm`;
+  try {
+    if (button) button.disabled = true;
+    const resp = await fetch(url);
+    if (!resp.ok) throw new Error('fetch failed');
+    const blob = await resp.blob();
+    const objUrl = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = objUrl;
+    a.download = fileName;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    setTimeout(() => URL.revokeObjectURL(objUrl), 10000);
+  } catch (_) {
+    /* 跨域抓檔失敗時退回新分頁開啟，使用者再手動儲存。 */
+    window.open(url, '_blank', 'noopener');
+  } finally {
+    if (button) button.disabled = false;
   }
 }
 function playTextGroup(lines, button) {
