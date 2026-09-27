@@ -56,6 +56,9 @@
 .sentence-audio-practice .card-record-button{background:#e5f2ee;border-color:#c9dfd8}
 .sentence-audio-practice .card-record-button.recording{background:var(--red);border-color:var(--red);color:white}
 .sentence-audio-practice .card-save-model-button{background:var(--yellow);border-color:#ead17b}
+.chinese-actions{display:flex;gap:8px;align-items:center;flex:none}
+.download-button{flex:none;width:38px;height:38px;border:1px solid var(--line);border-radius:50%;background:#fff;color:var(--ink);cursor:pointer;font-size:16px;line-height:1}
+.download-button:hover{border-color:var(--teal);color:var(--teal)}
 .card-recording-status{grid-column:1/-1;min-height:18px;color:var(--muted);font-size:12px;line-height:1.4}
 .sentence-card .speak-button[title="Play teacher model voice"]{background:var(--teal);color:white}
 @media(max-width:700px){.sentence-audio-practice{grid-template-columns:1fr 1fr}.sentence-audio-practice .card-save-model-button{grid-column:1/-1}}
