@@ -22,9 +22,9 @@
 /* Personal portrait replaces the decorative yellow hero circle. */
 .intro{position:relative;background:linear-gradient(135deg,#fffaf2 55%,#e7f2ed)}
 .intro>.eyebrow,.intro>h1,.intro>p,.intro>.primary-button,.intro>.intro-stats{position:relative;z-index:1}
-/* Hero 橫幅：學貴有恆圖檔 */
-.hero-banner-wrap{margin:6px 0 36px}
-.hero-banner{display:block;width:100%;height:auto;border-radius:16px;border:1px solid rgba(124,91,15,.14);box-shadow:0 18px 50px rgba(124,91,15,.16)}
+/* Hero 橫幅：學貴有恆圖檔，滿版貼齊網頁邊框不留白 */
+.hero-banner-wrap{margin:calc(clamp(62px,9vw,118px) * -1) calc(clamp(20px,8vw,120px) * -1) 26px}
+.hero-banner{display:block;width:100%;height:auto;border:0;border-radius:0;box-shadow:0 14px 34px rgba(124,91,15,.14)}
 @media(max-width:700px){.sentence-card .hindi,.sentence-card .pinyin{font-size:1.5rem!important}}
 
 /* AI prompt builder */
