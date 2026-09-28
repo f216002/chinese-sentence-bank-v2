@@ -180,3 +180,15 @@
 .course-pin-field input{width:100%}
 }
 
+
+/* Bilingual UI: Chinese (primary) + English (secondary, smaller) */
+.en-sub {
+  font-size: 0.72em;
+  font-weight: 400;
+  opacity: 0.62;
+  margin-left: 0.45em;
+  letter-spacing: 0;
+  white-space: nowrap;
+}
+h1 .en-sub, h2 .en-sub, h3 .en-sub { font-size: 0.6em; }
+button .en-sub { pointer-events: none; }
