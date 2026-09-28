@@ -442,8 +442,7 @@ function measureIntegratedLufs(audioBuffer) {
   return energyToLufs(integratedEnergy);
 }
 
-function encodeMonoWav(audioBuffer, gain) {
-  const length = audioBuffer.length;
+function encodeMonoWav(audioBuffer, gain) {  const length = audioBuffer.length;
   const channelCount = audioBuffer.numberOfChannels;
   const output = new ArrayBuffer(44 + length * 2);
   const view = new DataView(output);
@@ -484,12 +483,40 @@ function encodeMonoWav(audioBuffer, gain) {
   return new Blob([output], {type:'audio/wav'});
 }
 
+// Seconds trimmed from the end of every teacher recording, so the
+// keyboard/mouse click of pressing "Stop" never ends up in the saved audio.
+const RECORDING_TAIL_TRIM_SECONDS = 0.2;
+
+// Return a copy of audioBuffer with the last trimSeconds removed.
+// Returns the original buffer when it is too short to trim safely.
+function trimRecordingTail(context, audioBuffer, trimSeconds) {
+  if (!trimSeconds || trimSeconds <= 0) return audioBuffer;
+  const trimSamples = Math.floor(audioBuffer.sampleRate * trimSeconds);
+  // Keep at least 0.3s of audio; never trim a very short recording.
+  const minKeepSamples = Math.floor(audioBuffer.sampleRate * 0.3);
+  if (audioBuffer.length <= trimSamples + minKeepSamples) return audioBuffer;
+  const keptLength = audioBuffer.length - trimSamples;
+  const trimmed = context.createBuffer(
+    audioBuffer.numberOfChannels,
+    keptLength,
+    audioBuffer.sampleRate
+  );
+  for (let channel = 0; channel < audioBuffer.numberOfChannels; channel += 1) {
+    trimmed.getChannelData(channel).set(
+      audioBuffer.getChannelData(channel).subarray(0, keptLength)
+    );
+  }
+  return trimmed;
+}
+
 async function normalizeTeacherRecording(blob) {
   const AudioContextClass = window.AudioContext || window.webkitAudioContext;
   if (!AudioContextClass) return {blob, mimeType:blob.type || 'audio/webm', normalized:false};
   const context = new AudioContextClass();
   try {
-    const audioBuffer = await context.decodeAudioData((await blob.arrayBuffer()).slice(0));
+    let audioBuffer = await context.decodeAudioData((await blob.arrayBuffer()).slice(0));
+    // Trim the tail (e.g. the keyboard click when pressing Stop) before any other processing.
+    audioBuffer = trimRecordingTail(context, audioBuffer, RECORDING_TAIL_TRIM_SECONDS);
     const weighted = await kWeightedBuffer(audioBuffer);
     const measuredLufs = measureIntegratedLufs(weighted);
     const peak = audioBufferPeak(audioBuffer);
@@ -567,7 +594,7 @@ async function toggleCardRecording(node, sentence, preview) {
       recordButton.classList.remove('recording');
       recordButton.textContent = '● Record again';
       status.textContent = processed.normalized
-        ? 'Recording ready. Volume balanced to about -16 LUFS with -1 dB peak protection.'
+        ? 'Recording ready. Volume balanced to about -16 LUFS with -1 dB peak protection. Last 0.2s trimmed.'
         : 'Recording ready. Original audio was kept.';
       activeCardRecorder = null;
       activeCardStream = null;
