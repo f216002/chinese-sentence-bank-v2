@@ -8,46 +8,46 @@
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="default">
   <meta name="apple-mobile-web-app-title" content="Sentence Bank">
-  <title>My Chinese Sentence Bank</title>
+  <title>我的中文句子庫 My Chinese Sentence Bank</title>
   <link rel="apple-touch-icon" sizes="180x180" href="apple-touch-icon.png?v=20260911-10">
   <link rel="icon" type="image/png" sizes="32x32" href="favicon-32.png?v=20260911-10">
   <link rel="manifest" href="manifest.webmanifest?v=20260911-10">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Noto+Sans+Devanagari:wght@400;500;600&family=Noto+Sans+TC:wght@400;500;700&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="styles.css?v=20260927-1">
+  <link rel="stylesheet" href="styles.css?v=20260928-1">
 </head>
 <body>
-  <a class="skip-link" href="#sentenceGrid">Skip to sentence bank</a>
+  <a class="skip-link" href="#sentenceGrid">跳到句子庫 <span class="en-sub">Skip to sentence bank</span></a>
   <header class="topbar">
-    <a class="brand" href="#top" aria-label="Chinese Sentence Bank home">
+    <a class="brand" href="#top" aria-label="中文句子庫首頁">
       <span class="brand-mark" aria-hidden="true">句</span>
-      <span><strong id="bankName">My Chinese Sentence Bank</strong><small id="ownerName">A personal language notebook</small></span>
+      <span><strong id="bankName">我的中文句子庫 <span class="en-sub">My Chinese Sentence Bank</span></strong><small id="ownerName">個人語言筆記本 <span class="en-sub">A personal language notebook</span></small></span>
     </a>
     <div class="topbar-actions">
-      <button class="icon-button refresh-button" id="refreshButton" type="button" aria-label="Refresh sentence bank" title="Refresh">↻</button>
-      <button class="icon-button" id="helpButton" type="button" aria-label="Show paste format help" title="Help">?</button>
+      <button class="icon-button refresh-button" id="refreshButton" type="button" aria-label="重新整理句庫" title="重新整理 (Refresh)">↻</button>
+      <button class="icon-button" id="helpButton" type="button" aria-label="顯示貼上格式說明" title="說明 (Help)">?</button>
     </div>
   </header>
 
   <main id="top">
     <section class="intro">
       <figure class="hero-avatar">
-        <img src="avatar-steven.jpg?v=20260910-6" alt="Profile photo of the sentence bank owner">
+        <img src="avatar-steven.jpg?v=20260910-6" alt="句庫擁有者的照片">
       </figure>
-      <h1>Your words.<br><em>Your Chinese.</em></h1>
-      <button class="primary-button" id="startButton" type="button">Create a new sentence <span aria-hidden="true">↓</span></button>
-      <div class="intro-stats" aria-label="Sentence bank summary">
-        <span><strong id="sentenceCount">—</strong> sentences</span>
-        <span><strong id="categoryCount">—</strong> categories</span>
-        <span class="live-status" id="apiStatus"><i></i> Connecting</span>
+      <h1>你的詞語。<br><em>你的中文。</em></h1>
+      <button class="primary-button" id="startButton" type="button">新增句子 <span class="en-sub">Create a new sentence</span> <span aria-hidden="true">↓</span></button>
+      <div class="intro-stats" aria-label="句庫統計">
+        <span><strong id="sentenceCount">—</strong> 句子 <span class="en-sub">sentences</span></span>
+        <span><strong id="categoryCount">—</strong> 分類 <span class="en-sub">categories</span></span>
+        <span class="live-status" id="apiStatus"><i></i> 連線中 <span class="en-sub">Connecting</span></span>
       </div>
     </section>
 
     <section class="course" id="courseSection" aria-label="課程">
       <div class="course-lock" id="courseLock">
-        <label class="course-pin-field"><span>老師 PIN</span><input type="password" id="coursePinInput" inputmode="numeric" autocomplete="off" placeholder="輸入老師 PIN 解鎖"></label>
-        <button class="primary-button" id="courseUnlockButton" type="button">解鎖課程</button>
+        <label class="course-pin-field"><span>老師 PIN <span class="en-sub">Teacher PIN</span></span><input type="password" id="coursePinInput" inputmode="numeric" autocomplete="off" placeholder="輸入老師 PIN 解鎖 (Enter teacher PIN)"></label>
+        <button class="primary-button" id="courseUnlockButton" type="button">解鎖課程 <span class="en-sub">Unlock course</span></button>
         <p class="course-lock-note" id="courseLockMessage" aria-live="polite"></p>
       </div>
       <div id="courseBody" class="hidden">
@@ -66,7 +66,7 @@
             <button class="secondary-button" id="packLoadButton" type="button">讀取內容包</button>
             <p class="import-info" id="packInfo" aria-live="polite"></p>
             <label class="import-check"><input type="checkbox" id="importUpdateCheckbox"> <span>以內容包更新已存在的相同句子（直接更新內容，保留錄音）</span></label>
-            <label class="course-pin-field"><span>老師 PIN</span><input type="password" id="importPinInput" inputmode="numeric" autocomplete="off"></label>
+            <label class="course-pin-field"><span>老師 PIN <span class="en-sub">Teacher PIN</span></span><input type="password" id="importPinInput" inputmode="numeric" autocomplete="off"></label>
             <button class="primary-button" id="packImportButton" type="button" disabled>開始匯入</button>
             <p class="import-info" id="importProgress" aria-live="polite"></p>
           </div>
@@ -76,136 +76,136 @@
 
     <section class="prompt-builder" id="createPrompt" aria-labelledby="promptBuilderTitle">
       <div class="section-heading">
-        <div><span class="step">01</span><h2 id="promptBuilderTitle">Create your AI prompt</h2></div>
+        <div><span class="step">01</span><h2 id="promptBuilderTitle">建立 AI 提示詞 <span class="en-sub">Create your AI prompt</span></h2></div>
       </div>
-      <p class="section-note">Type one Hindi, Romanized Hindi, or Chinese sentence. The AI will translate in either direction and include Roman Hindi.</p>
+      <p class="section-note">輸入一個印地文、印地文羅馬拼音或中文句子。AI 會雙向翻譯並附上印地文羅馬拼音。 <span class="en-sub">Type one Hindi, Romanized Hindi, or Chinese sentence. The AI will translate in either direction and include Roman Hindi.</span></p>
       <div class="prompt-input-row">
         <label class="prompt-sentence-field">
-          <span class="field-label">Hindi, Roman Hindi, or Chinese sentence</span>
+          <span class="field-label">印地文、印地文羅馬拼音或中文句子 <span class="en-sub">Hindi, Roman Hindi, or Chinese sentence</span></span>
           <textarea id="promptSentence" rows="3" placeholder="क्योंकि तुमने अभी देना नहीं सीखा।&#10;Kyonki tumne abhi dena nahin seekha.&#10;or: 因為你還沒學會給予。"></textarea>
         </label>
         <div class="prompt-generate-actions">
-          <button class="secondary-button" id="clearPrompt" type="button">Clear</button>
-          <button class="primary-button generate-prompt-button" id="generatePrompt" type="button">Generate prompt</button>
+          <button class="secondary-button" id="clearPrompt" type="button">清除 <span class="en-sub">Clear</span></button>
+          <button class="primary-button generate-prompt-button" id="generatePrompt" type="button">產生提示詞 <span class="en-sub">Generate prompt</span></button>
         </div>
       </div>
       <div class="parse-message" id="promptMessage" role="status" aria-live="polite"></div>
       <div class="generated-prompt hidden" id="generatedPromptPanel">
         <div class="generated-prompt-heading">
-          <div><span class="step">READY</span><h3>Your complete prompt</h3></div>
+          <div><span class="step">就緒 <span class="en-sub">READY</span></span><h3>完整的提示詞 <span class="en-sub">Your complete prompt</span></h3></div>
           <span id="promptCopyStatus" role="status" aria-live="polite"></span>
         </div>
-        <textarea id="generatedPrompt" rows="2" readonly aria-label="Complete AI prompt"></textarea>
+        <textarea id="generatedPrompt" rows="2" readonly aria-label="完整的 AI 提示詞"></textarea>
         <div class="prompt-actions">
-          <button class="secondary-button" id="copyGeneratedPrompt" type="button">Copy prompt</button>
-          <button class="ai-launch-button chatgpt-button" id="openChatGPT" type="button">Copy &amp; open ChatGPT ↗</button>
-          <button class="ai-launch-button gemini-button" id="openGemini" type="button">Copy &amp; open Gemini ↗</button>
+          <button class="secondary-button" id="copyGeneratedPrompt" type="button">複製提示詞 <span class="en-sub">Copy prompt</span></button>
+          <button class="ai-launch-button chatgpt-button" id="openChatGPT" type="button">複製並開啟 ChatGPT ↗ <span class="en-sub">Copy &amp; open ChatGPT ↗</span></button>
+          <button class="ai-launch-button gemini-button" id="openGemini" type="button">複製並開啟 Gemini ↗ <span class="en-sub">Copy &amp; open Gemini ↗</span></button>
         </div>
-        <p class="prompt-tip">In ChatGPT or Gemini, paste with <strong>Ctrl + V</strong>. On a phone, press and hold the message box, then choose <strong>Paste</strong>.</p>
+        <p class="prompt-tip">在 ChatGPT 或 Gemini 中，用 <strong>Ctrl + V</strong> 貼上。在手機上，長按訊息框再選擇<strong>貼上</strong>。 <span class="en-sub">In ChatGPT or Gemini, paste with Ctrl + V. On a phone, press and hold the message box, then choose Paste.</span></p>
       </div>
     </section>
 
     <section class="composer" id="addSentence" aria-labelledby="composerTitle">
       <div class="section-heading">
-        <div><span class="step">02</span><h2 id="composerTitle">Paste the AI answer</h2></div>
-        <button class="text-button" id="sampleButton" type="button">Use sample</button>
+        <div><span class="step">02</span><h2 id="composerTitle">貼上 AI 的回答 <span class="en-sub">Paste the AI answer</span></h2></div>
+        <button class="text-button" id="sampleButton" type="button">使用範例 <span class="en-sub">Use sample</span></button>
       </div>
-      <p class="section-note">Use the labels HINDI, CHINESE, PINYIN, ROMAN, EXPLANATION and CATEGORY. Long explanations are welcome.</p>
+      <p class="section-note">請使用 HINDI、CHINESE、PINYIN、ROMAN、EXPLANATION 和 CATEGORY 標籤。歡迎寫詳細的解說。 <span class="en-sub">Use the labels HINDI, CHINESE, PINYIN, ROMAN, EXPLANATION and CATEGORY. Long explanations are welcome.</span></p>
       <label class="paste-box">
-        <span class="sr-only">Paste AI-generated sentence content</span>
-        <textarea id="pasteInput" rows="2" placeholder="Paste the complete AI answer here…"></textarea>
-        <span class="paste-hint" id="pasteHint">Paste your AI answer here</span>
+        <span class="sr-only">貼上 AI 產生的句子內容</span>
+        <textarea id="pasteInput" rows="2" placeholder="在這裡貼上完整的 AI 回答… (Paste the complete AI answer here…)"></textarea>
+        <span class="paste-hint" id="pasteHint">在這裡貼上 AI 的回答 <span class="en-sub">Paste your AI answer here</span></span>
       </label>
       <div class="composer-actions">
-        <button class="secondary-button" id="clearButton" type="button">Clear</button>
-        <button class="primary-button" id="previewButton" type="button">Preview sentence</button>
+        <button class="secondary-button" id="clearButton" type="button">清除 <span class="en-sub">Clear</span></button>
+        <button class="primary-button" id="previewButton" type="button">預覽句子 <span class="en-sub">Preview sentence</span></button>
       </div>
       <div class="parse-message" id="parseMessage" role="status" aria-live="polite"></div>
     </section>
 
     <section class="preview-panel hidden" id="previewPanel" aria-labelledby="previewTitle">
       <div class="section-heading">
-        <div><span class="step">03</span><h2 id="previewTitle">Check before saving</h2></div>
+        <div><span class="step">03</span><h2 id="previewTitle">儲存前檢查 <span class="en-sub">Check before saving</span></h2></div>
       </div>
       <div id="previewCard"></div>
       <div class="save-row">
-        <p>Your Google Sheet is protected. Enter your private submission PIN when saving.</p>
-        <button class="primary-button" id="saveButton" type="button">Save to my bank</button>
+        <p>你的 Google 試算表有保護，儲存時請輸入你的私人提交 PIN。 <span class="en-sub">Your Google Sheet is protected. Enter your private submission PIN when saving.</span></p>
+        <button class="primary-button" id="saveButton" type="button">存到我的句庫 <span class="en-sub">Save to my bank</span></button>
       </div>
     </section>
 
     <section class="library" aria-labelledby="libraryTitle">
       <div class="section-heading library-heading">
-        <div><span class="step">04</span><h2 id="libraryTitle">My sentence bank</h2></div>
+        <div><span class="step">04</span><h2 id="libraryTitle">我的句庫 <span class="en-sub">My sentence bank</span></h2></div>
         <span class="result-count" id="resultCount"></span>
       </div>
       <div class="tools">
-        <div class="search-builder" aria-label="Advanced keyword search">
-          <label class="keyword-field"><span class="keyword-label">A</span><span class="sr-only">First keyword</span><input id="keywordA" type="search" placeholder="First keyword"></label>
-          <label class="operator-field"><span class="sr-only">Operator between keywords A and B</span><select id="operatorAB"><option value="AND">AND</option><option value="OR">OR</option></select></label>
-          <label class="keyword-field"><span class="keyword-label">B</span><span class="sr-only">Second keyword</span><input id="keywordB" type="search" placeholder="Second keyword"></label>
-          <label class="operator-field"><span class="sr-only">Operator between keywords B and C</span><select id="operatorBC"><option value="AND">AND</option><option value="OR">OR</option></select></label>
-          <label class="keyword-field"><span class="keyword-label">C</span><span class="sr-only">Third keyword</span><input id="keywordC" type="search" placeholder="Third keyword"></label>
+        <div class="search-builder" aria-label="進階關鍵字搜尋">
+          <label class="keyword-field"><span class="keyword-label">A</span><span class="sr-only">第一個關鍵字</span><input id="keywordA" type="search" placeholder="第一個關鍵字 (First keyword)"></label>
+          <label class="operator-field"><span class="sr-only">關鍵字 A 和 B 之間的運算子</span><select id="operatorAB"><option value="AND">且 (AND)</option><option value="OR">或 (OR)</option></select></label>
+          <label class="keyword-field"><span class="keyword-label">B</span><span class="sr-only">第二個關鍵字</span><input id="keywordB" type="search" placeholder="第二個關鍵字 (Second keyword)"></label>
+          <label class="operator-field"><span class="sr-only">關鍵字 B 和 C 之間的運算子</span><select id="operatorBC"><option value="AND">且 (AND)</option><option value="OR">或 (OR)</option></select></label>
+          <label class="keyword-field"><span class="keyword-label">C</span><span class="sr-only">第三個關鍵字</span><input id="keywordC" type="search" placeholder="第三個關鍵字 (Third keyword)"></label>
           <small class="search-help">Searches Hindi, Chinese, pinyin, explanations, topics and tags. Calculated left to right.</small>
         </div>
         <div class="topic-picker" id="topicPicker">
           <button class="topic-toggle" id="topicToggle" type="button" aria-expanded="false" aria-controls="topicMenu">
-            <span><small>Topics</small><strong id="topicSummary">All topics</strong></span><span aria-hidden="true">⌄</span>
+            <span><small>主題 <span class="en-sub">Topics</span></small><strong id="topicSummary">全部主題 <span class="en-sub">All topics</span></strong></span><span aria-hidden="true">⌄</span>
           </button>
           <div class="topic-menu hidden" id="topicMenu">
-            <label class="topic-option topic-option-all"><input id="topicAll" type="checkbox" checked><span class="check-circle" aria-hidden="true"></span><span>Select all topics</span></label>
+            <label class="topic-option topic-option-all"><input id="topicAll" type="checkbox" checked><span class="check-circle" aria-hidden="true"></span><span>全選主題 <span class="en-sub">Select all topics</span></span></label>
             <div id="topicOptions"></div>
           </div>
         </div>
       </div>
       <div class="sentence-grid" id="sentenceGrid" aria-live="polite">
-        <div class="loading-card">Loading your sentences…</div>
+        <div class="loading-card">載入句子中… <span class="en-sub">Loading your sentences…</span></div>
       </div>
       <div class="empty-state hidden" id="emptyState">
-        <span aria-hidden="true">空</span><h3>No matching sentences</h3><p>Try another keyword or category.</p>
+        <span aria-hidden="true">空</span><h3>沒有符合的句子 <span class="en-sub">No matching sentences</span></h3><p>試試其他關鍵字或分類。 <span class="en-sub">Try another keyword or category.</span></p>
       </div>
     </section>
     <section class="pronunciation-lab" id="pronunciationLab" aria-labelledby="pronunciationTitle">
       <div class="section-heading lab-heading">
-        <div><span class="step">PRACTISE</span><h2 id="pronunciationTitle">Pronunciation Lab</h2></div>
+        <div><span class="step">練習 <span class="en-sub">PRACTISE</span></span><h2 id="pronunciationTitle">發音實驗室 <span class="en-sub">Pronunciation Lab</span></h2></div>
       </div>
-      <p class="section-note">Hear the four tones, record your own voice, and learn how the same sound can have different meanings.</p>
+      <p class="section-note">聽四聲、錄下自己的聲音，學習相同發音如何有不同意思。 <span class="en-sub">Hear the four tones, record your own voice, and learn how the same sound can have different meanings.</span></p>
 
-      <div class="lab-tabs" role="tablist" aria-label="Pronunciation activities">
-        <button class="lab-tab active" id="toneTab" type="button" role="tab" aria-selected="true" aria-controls="tonePractice">Four Tones</button>
-        <button class="lab-tab" id="homophoneTab" type="button" role="tab" aria-selected="false" aria-controls="homophonePractice">Same Sound</button>
+      <div class="lab-tabs" role="tablist" aria-label="發音活動">
+        <button class="lab-tab active" id="toneTab" type="button" role="tab" aria-selected="true" aria-controls="tonePractice">四聲 <span class="en-sub">Four Tones</span></button>
+        <button class="lab-tab" id="homophoneTab" type="button" role="tab" aria-selected="false" aria-controls="homophonePractice">同音字 <span class="en-sub">Same Sound</span></button>
       </div>
 
       <div class="lab-panel" id="tonePractice" role="tabpanel" aria-labelledby="toneTab">
         <div class="lab-intro-grid">
           <div>
-            <span class="lab-kicker">LISTEN AND COMPARE</span>
-            <h3>One syllable. Four directions.</h3>
-            <p>Listen to <strong>mā, má, mǎ, mà</strong>. The sound begins with <em>ma</em>, but the tone changes the meaning.</p>
+            <span class="lab-kicker">聽聽比比看 <span class="en-sub">LISTEN AND COMPARE</span></span>
+            <h3>一個音節，四個走向。 <span class="en-sub">One syllable. Four directions.</span></h3>
+            <p>聽聽 <strong>mā、má、mǎ、mà</strong>。發音都是 <em>ma</em> 開頭，但聲調改變了意思。 <span class="en-sub">Listen to mā, má, mǎ, mà. The sound begins with ma, but the tone changes the meaning.</span></p>
           </div>
           <p class="hindi-help">एक ही ध्वनि <strong>ma</strong> के चार अलग स्वर और चार अलग अर्थ हो सकते हैं। पहले सुनें, फिर बोलें और अपनी आवाज़ की रेखा देखें।</p>
         </div>
 
         <div class="tone-grid" id="toneGrid">
-          <article class="tone-card" data-tone="1" data-text="媽"><span class="tone-number">1</span><svg viewBox="0 0 120 62" aria-label="High flat tone"><path d="M12 15 L108 15"/></svg><strong>mā</strong><b>媽</b><small>mother · माँ</small><div class="tone-audio-actions"><button type="button" class="tone-audio" data-audio="audio/tones/ma-tone-1-once.mp3">▶ Once</button><button type="button" class="tone-audio" data-audio="audio/tones/ma-tone-1-slow-3x.mp3">🐢 Slow ×3</button><button type="button" class="tone-audio" data-audio="audio/tones/ma-tone-1-sentence.mp3">💬 Sentence</button></div></article>
-          <article class="tone-card" data-tone="2" data-text="麻"><span class="tone-number">2</span><svg viewBox="0 0 120 62" aria-label="Rising tone"><path d="M12 50 L108 12"/></svg><strong>má</strong><b>麻</b><small>hemp · सन</small><div class="tone-audio-actions"><button type="button" class="tone-audio" data-audio="audio/tones/ma-tone-2-once.mp3">▶ Once</button><button type="button" class="tone-audio" data-audio="audio/tones/ma-tone-2-slow-3x.mp3">🐢 Slow ×3</button><button type="button" class="tone-audio" data-audio="audio/tones/ma-tone-2-sentence.mp3">💬 Sentence</button></div></article>
-          <article class="tone-card" data-tone="3" data-text="馬"><span class="tone-number">3</span><svg viewBox="0 0 120 62" aria-label="Falling then rising tone"><path d="M12 24 Q58 67 108 18"/></svg><strong>mǎ</strong><b>馬</b><small>horse · घोड़ा</small><div class="tone-audio-actions"><button type="button" class="tone-audio" data-audio="audio/tones/ma-tone-3-once.mp3">▶ Once</button><button type="button" class="tone-audio" data-audio="audio/tones/ma-tone-3-slow-3x.mp3">🐢 Slow ×3</button><button type="button" class="tone-audio" data-audio="audio/tones/ma-tone-3-sentence.mp3">💬 Sentence</button></div></article>
-          <article class="tone-card" data-tone="4" data-text="罵"><span class="tone-number">4</span><svg viewBox="0 0 120 62" aria-label="Falling tone"><path d="M12 12 L108 54"/></svg><strong>mà</strong><b>罵</b><small>scold · डाँटना</small><div class="tone-audio-actions"><button type="button" class="tone-audio" data-audio="audio/tones/ma-tone-4-once.mp3">▶ Once</button><button type="button" class="tone-audio" data-audio="audio/tones/ma-tone-4-slow-3x.mp3">🐢 Slow ×3</button><button type="button" class="tone-audio" data-audio="audio/tones/ma-tone-4-sentence.mp3">💬 Sentence</button></div></article>
+          <article class="tone-card" data-tone="1" data-text="媽"><span class="tone-number">1</span><svg viewBox="0 0 120 62" aria-label="High flat tone"><path d="M12 15 L108 15"/></svg><strong>mā</strong><b>媽</b><small>mother · माँ</small><div class="tone-audio-actions"><button type="button" class="tone-audio" data-audio="audio/tones/ma-tone-1-once.mp3">▶ 播放一次 <span class="en-sub">Once</span></button><button type="button" class="tone-audio" data-audio="audio/tones/ma-tone-1-slow-3x.mp3">🐢 慢速×3 <span class="en-sub">Slow ×3</span></button><button type="button" class="tone-audio" data-audio="audio/tones/ma-tone-1-sentence.mp3">💬 例句 <span class="en-sub">Sentence</span></button></div></article>
+          <article class="tone-card" data-tone="2" data-text="麻"><span class="tone-number">2</span><svg viewBox="0 0 120 62" aria-label="Rising tone"><path d="M12 50 L108 12"/></svg><strong>má</strong><b>麻</b><small>hemp · सन</small><div class="tone-audio-actions"><button type="button" class="tone-audio" data-audio="audio/tones/ma-tone-2-once.mp3">▶ 播放一次 <span class="en-sub">Once</span></button><button type="button" class="tone-audio" data-audio="audio/tones/ma-tone-2-slow-3x.mp3">🐢 慢速×3 <span class="en-sub">Slow ×3</span></button><button type="button" class="tone-audio" data-audio="audio/tones/ma-tone-2-sentence.mp3">💬 例句 <span class="en-sub">Sentence</span></button></div></article>
+          <article class="tone-card" data-tone="3" data-text="馬"><span class="tone-number">3</span><svg viewBox="0 0 120 62" aria-label="Falling then rising tone"><path d="M12 24 Q58 67 108 18"/></svg><strong>mǎ</strong><b>馬</b><small>horse · घोड़ा</small><div class="tone-audio-actions"><button type="button" class="tone-audio" data-audio="audio/tones/ma-tone-3-once.mp3">▶ 播放一次 <span class="en-sub">Once</span></button><button type="button" class="tone-audio" data-audio="audio/tones/ma-tone-3-slow-3x.mp3">🐢 慢速×3 <span class="en-sub">Slow ×3</span></button><button type="button" class="tone-audio" data-audio="audio/tones/ma-tone-3-sentence.mp3">💬 例句 <span class="en-sub">Sentence</span></button></div></article>
+          <article class="tone-card" data-tone="4" data-text="罵"><span class="tone-number">4</span><svg viewBox="0 0 120 62" aria-label="Falling tone"><path d="M12 12 L108 54"/></svg><strong>mà</strong><b>罵</b><small>scold · डाँटना</small><div class="tone-audio-actions"><button type="button" class="tone-audio" data-audio="audio/tones/ma-tone-4-once.mp3">▶ 播放一次 <span class="en-sub">Once</span></button><button type="button" class="tone-audio" data-audio="audio/tones/ma-tone-4-slow-3x.mp3">🐢 慢速×3 <span class="en-sub">Slow ×3</span></button><button type="button" class="tone-audio" data-audio="audio/tones/ma-tone-4-sentence.mp3">💬 例句 <span class="en-sub">Sentence</span></button></div></article>
         </div>
 
         <div class="record-practice">
           <div class="record-controls">
-            <label for="practiceTone">Choose a tone</label>
+            <label for="practiceTone">選擇聲調 <span class="en-sub">Choose a tone</span></label>
             <select id="practiceTone"><option value="1">1st tone · mā · 媽</option><option value="2">2nd tone · má · 麻</option><option value="3">3rd tone · mǎ · 馬</option><option value="4">4th tone · mà · 罵</option></select>
-            <button class="secondary-button" id="hearPracticeTone" type="button">▶ Hear model</button>
-            <button class="primary-button record-button" id="recordTone" type="button">● Start recording</button>
-            <button class="secondary-button" id="playRecording" type="button" disabled>▶ Play my voice</button>
+            <button class="secondary-button" id="hearPracticeTone" type="button">▶ 聽示範 <span class="en-sub">Hear model</span></button>
+            <button class="primary-button record-button" id="recordTone" type="button">● 開始錄音 <span class="en-sub">Start recording</span></button>
+            <button class="secondary-button" id="playRecording" type="button" disabled>▶ 播放我的錄音 <span class="en-sub">Play my voice</span></button>
           </div>
           <div class="pitch-panel">
-            <div class="pitch-heading"><strong>Your tone movement</strong><span id="recordingStatus" role="status" aria-live="polite">Choose a tone and record your voice.</span></div>
+            <div class="pitch-heading"><strong>你的聲調走勢 <span class="en-sub">Your tone movement</span></strong><span id="recordingStatus" role="status" aria-live="polite">選擇聲調並錄下你的聲音。 <span class="en-sub">Choose a tone and record your voice.</span></span></div>
             <canvas id="pitchCanvas" width="760" height="240" aria-label="Reference tone curve and recorded pitch curve"></canvas>
-            <div class="pitch-legend"><span><i class="reference-line"></i>Reference direction</span><span><i class="student-line"></i>Your voice</span></div>
-            <p class="pitch-note">This graph is a learning guide, not an exam score. Try to make your red line move in the same direction as the green line.</p>
+            <div class="pitch-legend"><span><i class="reference-line"></i>參考方向 <span class="en-sub">Reference direction</span></span><span><i class="student-line"></i>你的聲音 <span class="en-sub">Your voice</span></span></div>
+            <p class="pitch-note">這個圖表是學習參考，不是考試分數。試著讓你的紅線和綠線往同一個方向走。 <span class="en-sub">This graph is a learning guide, not an exam score. Try to make your red line move in the same direction as the green line.</span></p>
           </div>
           <audio id="recordedAudio" hidden></audio>
         </div>
@@ -213,24 +213,24 @@
 
       <div class="lab-panel hidden" id="homophonePractice" role="tabpanel" aria-labelledby="homophoneTab">
         <div class="lab-intro-grid">
-          <div><span class="lab-kicker">SAME SOUND DIFFERENT MEANING</span><h3>Listen to the word, not only the syllable.</h3><p>Many characters can share the same Pinyin and tone. The word and sentence tell us which meaning is correct.</p></div>
+          <div><span class="lab-kicker">同音不同字 <span class="en-sub">SAME SOUND DIFFERENT MEANING</span></span><h3>聽整個詞，不只聽音節。 <span class="en-sub">Listen to the word, not only the syllable.</span></h3><p>很多字可以有相同的拼音和聲調。詞語和句子告訴我們哪個意思正確。 <span class="en-sub">Many characters can share the same Pinyin and tone. The word and sentence tell us which meaning is correct.</span></p></div>
           <p class="hindi-help">एक ही उच्चारण के कई चीनी अक्षर हो सकते हैं। सही अर्थ समझने के लिए पूरा शब्द और वाक्य देखें।</p>
         </div>
-        <div class="sound-selector" role="group" aria-label="Choose a homophone family">
+        <div class="sound-selector" role="group" aria-label="選擇同音字家族">
           <button type="button" class="sound-chip active" data-sound="shi4">shì</button>
           <button type="button" class="sound-chip" data-sound="yi4">yì</button>
           <button type="button" class="sound-chip" data-sound="gong1">gōng</button>
         </div>
         <div class="homophone-grid" id="homophoneGrid"></div>
         <div class="context-quiz">
-          <span class="lab-kicker">USE THE SENTENCE</span>
-          <h3>Choose the correct character</h3>
+          <span class="lab-kicker">看句子選字 <span class="en-sub">USE THE SENTENCE</span></span>
+          <h3>選出正確的字 <span class="en-sub">Choose the correct character</span></h3>
           <p class="quiz-progress" id="quizProgress"></p>
           <p class="quiz-question" id="quizQuestion"></p>
           <p class="quiz-pinyin" id="quizPinyin"></p>
           <div class="quiz-options" id="quizOptions"></div>
           <div class="quiz-feedback" id="quizFeedback" role="status" aria-live="polite"></div>
-          <button class="secondary-button" id="nextQuiz" type="button">Next question</button>
+          <button class="secondary-button" id="nextQuiz" type="button">下一題 <span class="en-sub">Next question</span></button>
         </div>
       </div>
     </section>
@@ -238,12 +238,12 @@
   </main>
 
   <dialog id="helpDialog">
-    <button class="dialog-close" id="closeHelp" aria-label="Close help">×</button>
-    <span class="step">PASTE GUIDE</span>
-    <h2>Use one prompt every time</h2>
-    <p>Copy our standard prompt into ChatGPT or Gemini, replace the Hindi sentence, and send it.</p>
-    <button class="primary-button copy-prompt" id="copyPrompt" type="button">Copy AI prompt</button>
-    <p class="format-note">The parser also accepts common Markdown labels such as <code>**Chinese:**</code>.</p>
+    <button class="dialog-close" id="closeHelp" aria-label="關閉說明">×</button>
+    <span class="step">貼上指南 <span class="en-sub">PASTE GUIDE</span></span>
+    <h2>每次都用同一個提示詞 <span class="en-sub">Use one prompt every time</span></h2>
+    <p>把我們的標準提示詞複製到 ChatGPT 或 Gemini，把印地文句子換掉，然後送出。 <span class="en-sub">Copy our standard prompt into ChatGPT or Gemini, replace the Hindi sentence, and send it.</span></p>
+    <button class="primary-button copy-prompt" id="copyPrompt" type="button">複製 AI 提示詞 <span class="en-sub">Copy AI prompt</span></button>
+    <p class="format-note">解析器也接受常見的 Markdown 標籤，例如 <code>**Chinese:**</code>。 <span class="en-sub">The parser also accepts common Markdown labels such as **Chinese:**.</span></p>
     <pre>HINDI:
 [Hindi sentence]
 
@@ -264,92 +264,92 @@ CATEGORY:
   </dialog>
 
   <dialog id="pinDialog">
-    <button class="dialog-close" id="closePin" aria-label="Close PIN window">×</button>
-    <span class="step">SECURE SUBMISSION</span>
-    <h2>Enter your submission PIN</h2>
-    <p>The PIN stays on this device. It is never stored in the public GitHub code.</p>
-    <label class="pin-field">Submission PIN<input id="pinInput" type="password" inputmode="numeric" autocomplete="off" placeholder="Enter PIN"></label>
-    <label class="remember-pin"><input id="rememberPin" type="checkbox" checked> Remember on this device</label>
-    <button class="primary-button full-button" id="confirmSave" type="button">Save sentence</button>
+    <button class="dialog-close" id="closePin" aria-label="關閉 PIN 視窗">×</button>
+    <span class="step">安全提交 <span class="en-sub">SECURE SUBMISSION</span></span>
+    <h2>輸入你的提交 PIN <span class="en-sub">Enter your submission PIN</span></h2>
+    <p>PIN 只留在這台裝置上，不會存在公開的 GitHub 程式碼中。 <span class="en-sub">The PIN stays on this device. It is never stored in the public GitHub code.</span></p>
+    <label class="pin-field">提交 PIN <span class="en-sub">Submission PIN</span><input id="pinInput" type="password" inputmode="numeric" autocomplete="off" placeholder="輸入 PIN (Enter PIN)"></label>
+    <label class="remember-pin"><input id="rememberPin" type="checkbox" checked> 記住這台裝置 <span class="en-sub">Remember on this device</span></label>
+    <button class="primary-button full-button" id="confirmSave" type="button">儲存句子 <span class="en-sub">Save sentence</span></button>
     <div class="parse-message" id="saveMessage" role="status" aria-live="polite"></div>
   </dialog>
 
   <dialog id="audioPinDialog">
-    <button class="dialog-close" id="closeAudioPin" aria-label="Close teacher recording window">×</button>
-    <span class="step">TEACHER AUDIO</span>
-    <h2>Save as the model voice</h2>
-    <p>Only the teacher should save a recording for all students. Enter the private submission PIN.</p>
-    <label class="pin-field">Teacher PIN<input id="audioPinInput" type="password" inputmode="numeric" autocomplete="off" placeholder="Enter PIN"></label>
-    <button class="primary-button full-button" id="confirmAudioSave" type="button">Save teacher recording</button>
+    <button class="dialog-close" id="closeAudioPin" aria-label="關閉老師錄音視窗">×</button>
+    <span class="step">老師錄音 <span class="en-sub">TEACHER AUDIO</span></span>
+    <h2>存為示範語音 <span class="en-sub">Save as the model voice</span></h2>
+    <p>只有老師可以為所有學生儲存錄音。請輸入私人提交 PIN。 <span class="en-sub">Only the teacher should save a recording for all students. Enter the private submission PIN.</span></p>
+    <label class="pin-field">老師 PIN <span class="en-sub">Teacher PIN</span><input id="audioPinInput" type="password" inputmode="numeric" autocomplete="off" placeholder="輸入 PIN (Enter PIN)"></label>
+    <button class="primary-button full-button" id="confirmAudioSave" type="button">儲存老師錄音 <span class="en-sub">Save teacher recording</span></button>
     <div class="parse-message" id="audioSaveMessage" role="status" aria-live="polite"></div>
   </dialog>
 
   <dialog id="deleteDialog">
-    <button class="dialog-close" id="closeDelete" aria-label="Close delete window">×</button>
-    <span class="step delete-step">DELETE SENTENCE</span>
-    <h2>Delete this sentence?</h2>
-    <p class="delete-warning">This permanently removes the sentence and its saved teacher recording.</p>
+    <button class="dialog-close" id="closeDelete" aria-label="關閉刪除視窗">×</button>
+    <span class="step delete-step">刪除句子 <span class="en-sub">DELETE SENTENCE</span></span>
+    <h2>確定要刪除這個句子？ <span class="en-sub">Delete this sentence?</span></h2>
+    <p class="delete-warning">這會永久刪除句子及其已儲存的老師錄音。 <span class="en-sub">This permanently removes the sentence and its saved teacher recording.</span></p>
     <div class="delete-sentence-preview">
       <strong id="deleteSentenceText"></strong>
       <small id="deleteRecordId"></small>
     </div>
     <label class="pin-field">Teacher PIN<input id="deletePinInput" type="password" inputmode="numeric" autocomplete="off" placeholder="Enter PIN"></label>
-    <button class="danger-button full-button" id="confirmDelete" type="button">Delete permanently</button>
+    <button class="danger-button full-button" id="confirmDelete" type="button">永久刪除 <span class="en-sub">Delete permanently</span></button>
     <div class="parse-message" id="deleteMessage" role="status" aria-live="polite"></div>
   </dialog>
 
   <dialog id="editDialog">
-    <button class="dialog-close" id="closeEdit" aria-label="Close edit window">×</button>
-    <span class="step edit-step">EDIT SENTENCE</span>
-    <h2>Edit sentence</h2>
+    <button class="dialog-close" id="closeEdit" aria-label="關閉編輯視窗">×</button>
+    <span class="step edit-step">編輯句子 <span class="en-sub">EDIT SENTENCE</span></span>
+    <h2>編輯句子 <span class="en-sub">Edit sentence</span></h2>
     <p class="edit-note" id="editRecordNote"></p>
-    <p class="edit-audio-note hidden" id="editAudioNote">This sentence has a saved teacher recording. It stays attached after editing.</p>
+    <p class="edit-audio-note hidden" id="editAudioNote">這個句子有已儲存的老師錄音，編輯後會保留。 <span class="en-sub">This sentence has a saved teacher recording. It stays attached after editing.</span></p>
     <div class="edit-fields">
-      <label class="edit-field">Hindi sentence<textarea id="editHindi" lang="hi" rows="2"></textarea></label>
-      <label class="edit-field">Chinese sentence<input id="editChinese" lang="zh-Hant" autocomplete="off"></label>
-      <label class="edit-field">Pinyin<input id="editPinyin" autocomplete="off"></label>
-      <label class="edit-field">Roman Hindi<input id="editRoman" lang="hi-Latn" autocomplete="off"></label>
-      <label class="edit-field">Hindi explanation<textarea id="editExplanation" lang="hi" rows="2"></textarea></label>
+      <label class="edit-field">印地文句子 <span class="en-sub">Hindi sentence</span><textarea id="editHindi" lang="hi" rows="2"></textarea></label>
+      <label class="edit-field">中文句子 <span class="en-sub">Chinese sentence</span><input id="editChinese" lang="zh-Hant" autocomplete="off"></label>
+      <label class="edit-field">拼音 <span class="en-sub">Pinyin</span><input id="editPinyin" autocomplete="off"></label>
+      <label class="edit-field">印地文羅馬拼音 <span class="en-sub">Roman Hindi</span><input id="editRoman" lang="hi-Latn" autocomplete="off"></label>
+      <label class="edit-field">印地文解說 <span class="en-sub">Hindi explanation</span><textarea id="editExplanation" lang="hi" rows="2"></textarea></label>
       <div class="edit-row">
-        <label class="edit-field">Category<input id="editCategory" list="editCategoryList" autocomplete="off"></label>
-        <label class="edit-field">Tags<input id="editTags" autocomplete="off" placeholder="comma, separated"></label>
+        <label class="edit-field">分類 <span class="en-sub">Category</span><input id="editCategory" list="editCategoryList" autocomplete="off"></label>
+        <label class="edit-field">標籤 <span class="en-sub">Tags</span><input id="editTags" autocomplete="off" placeholder="用逗號分隔 (comma, separated)"></label>
       </div>
-      <label class="edit-field">AI source<input id="editAiSource" autocomplete="off"></label>
+      <label class="edit-field">AI 來源 <span class="en-sub">AI source</span><input id="editAiSource" autocomplete="off"></label>
     </div>
     <datalist id="editCategoryList"></datalist>
     <div class="preview-warnings hidden" id="editWarnings" role="status"></div>
     <label class="pin-field">Teacher PIN<input id="editPinInput" type="password" inputmode="numeric" autocomplete="off" placeholder="Enter PIN"></label>
-    <button class="primary-button full-button" id="confirmEdit" type="button">Save changes</button>
+    <button class="primary-button full-button" id="confirmEdit" type="button">儲存變更 <span class="en-sub">Save changes</span></button>
     <div class="parse-message" id="editMessage" role="status" aria-live="polite"></div>
   </dialog>
 
   <footer class="site-footer">
     <div class="footer-inner">
       <div class="footer-about">
-        <strong>My Chinese Sentence Bank</strong>
-        <p>A free learning notebook for Hindi-speaking beginners studying Traditional Chinese (Taiwanese Mandarin). Sentences are saved to the owner's Google Sheet; the PIN is only checked by the Apps Script backend and never stored in this public code.</p>
+        <strong>我的中文句子庫 <span class="en-sub">My Chinese Sentence Bank</span></strong>
+        <p>給印地語初學者學繁體中文（台灣國語）的免費學習筆記本。句子會存到擁有者的 Google 試算表；PIN 只由 Apps Script 後端驗證，不會存在這份公開程式碼中。 <span class="en-sub">A free learning notebook for Hindi-speaking beginners studying Traditional Chinese (Taiwanese Mandarin). Sentences are saved to the owner's Google Sheet; the PIN is only checked by the Apps Script backend and never stored in this public code.</span></p>
       </div>
       <div class="footer-links">
-        <span>Built for classroom teaching with Google Sheets + GitHub Pages.</span>
-        <a href="mailto:f216002@gmail.com">Contact the teacher</a>
+        <span>為課堂教學而建：Google Sheets + GitHub Pages。 <span class="en-sub">Built for classroom teaching with Google Sheets + GitHub Pages.</span></span>
+        <a href="mailto:f216002@gmail.com">聯絡老師 <span class="en-sub">Contact the teacher</span></a>
       </div>
     </div>
   </footer>
 
   <template id="cardTemplate">
     <article class="sentence-card">
-      <div class="card-top"><span class="category-pill"></span><div class="card-admin"><span class="record-id"></span><button class="card-edit-button" type="button" aria-label="Edit sentence" title="Edit sentence">Edit</button><button class="card-delete-button" type="button" aria-label="Delete sentence" title="Delete sentence">Delete</button></div></div>
-      <div class="hindi-row"><p class="hindi"></p><button class="hindi-speak-button" type="button" aria-label="Play Hindi pronunciation">▶</button></div>
+      <div class="card-top"><span class="category-pill"></span><div class="card-admin"><span class="record-id"></span><button class="card-edit-button" type="button" aria-label="編輯句子" title="編輯句子 (Edit sentence)">編輯 <span class="en-sub">Edit</span></button><button class="card-delete-button" type="button" aria-label="刪除句子" title="刪除句子 (Delete sentence)">刪除 <span class="en-sub">Delete</span></button></div></div>
+      <div class="hindi-row"><p class="hindi"></p><button class="hindi-speak-button" type="button" aria-label="播放印地語發音">▶</button></div>
       <p class="roman-hindi"></p>
-      <div class="chinese-row"><h3 class="chinese"></h3><span class="chinese-actions"><button class="speak-button" type="button" aria-label="Play Taiwanese Mandarin pronunciation">▶</button><button class="download-button" type="button" hidden aria-label="Download teacher recording" title="Download teacher recording">⤓</button></span></div>
+      <div class="chinese-row"><h3 class="chinese"></h3><span class="chinese-actions"><button class="speak-button" type="button" aria-label="播放台灣國語發音">▶</button><button class="download-button" type="button" hidden aria-label="下載老師錄音" title="下載老師錄音 (Download teacher recording)">⤓</button></span></div>
       <p class="pinyin"></p>
-      <div class="sentence-audio-practice" aria-label="Pronunciation practice">
-        <button class="card-record-button" type="button">● Record my voice</button>
-        <button class="card-play-button" type="button" disabled>▶ Play my voice</button>
-        <button class="card-save-model-button" type="button" disabled>Save as model</button>
+      <div class="sentence-audio-practice" aria-label="發音練習">
+        <button class="card-record-button" type="button">● 錄我的聲音 <span class="en-sub">Record my voice</span></button>
+        <button class="card-play-button" type="button" disabled>▶ 播放我的錄音 <span class="en-sub">Play my voice</span></button>
+        <button class="card-save-model-button" type="button" disabled>存為示範 <span class="en-sub">Save as model</span></button>
         <span class="card-recording-status" role="status" aria-live="polite"></span>
       </div>
-      <details><summary>Hindi explanation <span>＋</span></summary><div class="explanation"></div></details>
+      <details><summary>印地文解說 <span class="en-sub">Hindi explanation</span> <span>＋</span></summary><div class="explanation"></div></details>
       <div class="tags"></div>
     </article>
   </template>
@@ -358,7 +358,7 @@ CATEGORY:
   <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-storage-compat.js"></script>
-  <script src="app.js?v=20260928-1"></script>
+  <script src="app.js?v=20260928-2"></script>
 </body>
 </html>
 
