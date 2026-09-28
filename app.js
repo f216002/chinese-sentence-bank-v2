@@ -1820,7 +1820,7 @@ function renderLessonGrid() {
       card.addEventListener('click', () => { courseState.lesson = lesson.n; courseState.tab = '課文'; renderLessonView(); });
     } else {
       card.disabled = true;
-      card.title = hasPack ? '請先在課程管理匯入內容包' : '內容準備中';
+      card.title = hasPack ? '課程匯入中，請稍等30秒' : '內容準備中';
     }
     grid.appendChild(card);
   });
@@ -2307,8 +2307,5 @@ async function importPackRecords() {
 $('courseUnlockButton').addEventListener('click', unlockCourse);
 $('coursePinInput').addEventListener('keydown', e => { if (e.key === 'Enter') unlockCourse(); });
 $('lessonBackButton').addEventListener('click', () => { courseState.lesson = 0; renderLessonGrid(); $('courseSection').scrollIntoView({ behavior: 'smooth' }); });
-$('packLoadButton').addEventListener('click', loadPackPreview);
-$('packImportButton').addEventListener('click', importPackRecords);
-$('importUpdateCheckbox').addEventListener('change', () => { if ($('packFileInput').files.length) loadPackPreview(); });
 document.addEventListener('keydown', e => { if (e.key === 'Escape' && textPlay.playing) stopTextPlay(); });
 
