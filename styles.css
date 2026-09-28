@@ -200,3 +200,7 @@ button .en-sub { pointer-events: none; }
 .intro>h1,.intro>.primary-button,.intro>.intro-stats{position:relative;z-index:1}
 .intro>.hero-avatar{z-index:1}
 .section-heading h2{font-family:"Noto Serif TC","Noto Sans TC",serif;font-weight:700;letter-spacing:.03em}
+
+/* 回課程總覽按鈕：放大 200%，青綠色字，與米色背景協調 */
+#lessonBackButton{font-size:200%;font-weight:700;color:var(--teal);border:2px solid var(--teal);background:#fff;padding:14px 30px;border-radius:10px}
+#lessonBackButton:hover{background:#e5f2ee}
