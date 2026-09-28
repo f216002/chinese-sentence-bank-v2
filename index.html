@@ -58,19 +58,6 @@
           <div class="lesson-tabs" role="tablist" aria-label="課程單元" id="lessonTabs"></div>
           <div id="lessonContent"></div>
         </div>
-        <details class="course-import" id="courseImportPanel">
-          <summary>課程管理（老師）：匯入內容包</summary>
-          <div class="import-controls">
-            <label class="course-pin-field"><span>內容包檔案（本機 .txt，不會上傳到網站）</span>
-              <input type="file" id="packFileInput" accept=".txt,text/plain"></label>
-            <button class="secondary-button" id="packLoadButton" type="button">讀取內容包</button>
-            <p class="import-info" id="packInfo" aria-live="polite"></p>
-            <label class="import-check"><input type="checkbox" id="importUpdateCheckbox"> <span>以內容包更新已存在的相同句子（直接更新內容，保留錄音）</span></label>
-            <label class="course-pin-field"><span>老師 PIN <span class="en-sub">Teacher PIN</span></span><input type="password" id="importPinInput" inputmode="numeric" autocomplete="off"></label>
-            <button class="primary-button" id="packImportButton" type="button" disabled>開始匯入</button>
-            <p class="import-info" id="importProgress" aria-live="polite"></p>
-          </div>
-        </details>
       </div>
     </section>
 
@@ -356,7 +343,7 @@ CATEGORY:
   <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-storage-compat.js"></script>
-  <script src="app.js?v=20260928-4"></script>
+  <script src="app.js?v=20260928-5"></script>
 </body>
 </html>
 
