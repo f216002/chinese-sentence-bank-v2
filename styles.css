@@ -192,3 +192,11 @@
 }
 h1 .en-sub, h2 .en-sub, h3 .en-sub { font-size: 0.6em; }
 button .en-sub { pointer-events: none; }
+
+/* 中國山水風：書法標題・古典襯線・淡墨水印 */
+.intro h1.hero-calligraphy{font-family:"Ma Shan Zheng","Noto Serif TC","Noto Sans TC",cursive;font-weight:400;font-size:clamp(56px,9.5vw,120px);line-height:1.15;letter-spacing:.12em;color:var(--ink);margin:24px 0 6px;max-width:920px}
+.hero-calligraphy .hero-en{display:block;font-family:"Noto Serif TC","Noto Sans TC",serif;font-size:clamp(13px,1.6vw,18px);font-weight:600;letter-spacing:.24em;color:var(--muted);margin-top:22px}
+.intro::after{content:"學";position:absolute;left:-.1em;bottom:-.32em;z-index:0;font-family:"Ma Shan Zheng","Noto Serif TC",cursive;font-size:clamp(260px,36vw,540px);line-height:1;color:rgba(23,35,34,.05);pointer-events:none;user-select:none}
+.intro>h1,.intro>.primary-button,.intro>.intro-stats{position:relative;z-index:1}
+.intro>.hero-avatar{z-index:1}
+.section-heading h2{font-family:"Noto Serif TC","Noto Sans TC",serif;font-weight:700;letter-spacing:.03em}
