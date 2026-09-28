@@ -1423,7 +1423,7 @@ function receiveBank(data) {
   if (!data || !data.success) return showApiError('The API returned an error.');
   state.settings = data.settings || {}; state.sentences = data.sentences || [];
   state.categories = String(state.settings.categories || '').split(',').map(s => s.trim()).filter(Boolean);
-  if (state.settings.bankName) { $('bankName').textContent = state.settings.bankName; document.title = state.settings.bankName; }
+  if (state.settings.bankName && state.settings.bankName !== 'My Chinese Sentence Bank') { $('bankName').textContent = state.settings.bankName; document.title = state.settings.bankName; }
   else { setBilingualText($('bankName'), '我的中文句子庫', 'My Chinese Sentence Bank'); document.title = '我的中文句子庫 My Chinese Sentence Bank'; }
   if (state.settings.ownerName && state.settings.ownerName !== 'Your Name') $('ownerName').textContent = `Made for ${state.settings.ownerName}`;
   else setBilingualText($('ownerName'), '個人語言筆記本', 'A personal language notebook');
