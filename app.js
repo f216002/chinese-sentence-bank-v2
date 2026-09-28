@@ -176,6 +176,19 @@ Sentence to be explained:
 
 const state = { sentences: [], categories: [], selectedCategories: new Set(), settings: {}, preview: null };
 const $ = (id) => document.getElementById(id);
+/* Bilingual UI helper: Chinese (primary) + English (secondary, smaller). */
+function setBilingualText(el, zh, en) {
+  if (!el) return;
+  el.innerHTML = '';
+  el.appendChild(document.createTextNode(zh));
+  if (en) {
+    const sub = document.createElement('span');
+    sub.className = 'en-sub';
+    sub.textContent = en;
+    el.appendChild(document.createTextNode(' '));
+    el.appendChild(sub);
+  }
+}
 const sentenceModelAudio = new Audio();
 const teacherAudioCache = new Map();
 const cardRecordings = new Map();
@@ -213,7 +226,7 @@ function parsePaste(text) {
 function buildPrompt() {
   const sentence = $('promptSentence').value.trim();
   if (!sentence) {
-    $('promptMessage').textContent = 'Type one Hindi, Romanized Hindi, or Chinese sentence first.';
+    setBilingualText($('promptMessage'), '請先輸入一個印地文、印地文羅馬拼音或中文句子。', 'Type one Hindi, Romanized Hindi, or Chinese sentence first.');
     $('promptSentence').focus();
     return '';
   }
@@ -251,11 +264,11 @@ async function copyPromptText() {
     $('generatedPrompt').focus();
     $('generatedPrompt').select();
     if (!document.execCommand('copy')) {
-      $('promptCopyStatus').textContent = 'Select the prompt and copy it manually.';
+      setBilingualText($('promptCopyStatus'), '請手動選取提示詞並複製。', 'Select the prompt and copy it manually.');
       return false;
     }
   }
-  $('promptCopyStatus').textContent = 'Prompt copied!';
+  setBilingualText($('promptCopyStatus'), '已複製提示詞！', 'Prompt copied!');
   setTimeout(() => { $('promptCopyStatus').textContent = ''; }, 1800);
   return true;
 }
@@ -272,7 +285,7 @@ function copyAndOpen(url) {
   }
   const newPage = window.open(url, '_blank', 'noopener,noreferrer');
   copyPromptText();
-  if (!newPage) $('promptCopyStatus').textContent = 'Prompt copied. Please allow pop-ups, then open the AI website.';
+  if (!newPage) setBilingualText($('promptCopyStatus'), '已複製提示詞。請允許彈出視窗，再開啟 AI 網站。', 'Prompt copied. Please allow pop-ups, then open the AI website.');
 }
 
 function romanHindiFor(sentence) {
@@ -550,7 +563,7 @@ async function toggleCardRecording(node, sentence, preview) {
 
   if (activeCardRecorder && activeCardRecorder.state === 'recording') {
     if (activeCardButton !== recordButton) {
-      status.textContent = 'Another card is recording. Stop it first.';
+      setBilingualText(status, '另一張卡片正在錄音，請先停止。', 'Another card is recording. Stop it first.');
       return;
     }
     activeCardRecorder.stop();
@@ -558,7 +571,7 @@ async function toggleCardRecording(node, sentence, preview) {
   }
 
   if (!navigator.mediaDevices || !window.MediaRecorder) {
-    status.textContent = 'Recording is not supported here. Try Chrome, Edge, or Safari.';
+    setBilingualText(status, '這裡不支援錄音，請用 Chrome、Edge 或 Safari。', 'Recording is not supported here. Try Chrome, Edge, or Safari.');
     return;
   }
 
@@ -573,7 +586,7 @@ async function toggleCardRecording(node, sentence, preview) {
     recorder.onstop = async () => {
       stream.getTracks().forEach(track => track.stop());
       const rawBlob = new Blob(chunks, {type:recorder.mimeType || 'audio/webm'});
-      status.textContent = 'Balancing recording volume…';
+      setBilingualText(status, '正在平衡錄音音量…', 'Balancing recording volume…');
       let processed = {blob:rawBlob, mimeType:rawBlob.type || 'audio/webm', normalized:false};
       try {
         processed = await normalizeTeacherRecording(rawBlob);
@@ -592,7 +605,7 @@ async function toggleCardRecording(node, sentence, preview) {
       playButton.disabled = false;
       saveButton.disabled = preview || !sentence.recordId;
       recordButton.classList.remove('recording');
-      recordButton.textContent = '● Record again';
+      setBilingualText(recordButton, '● 重新錄音', '● Record again');
       status.textContent = processed.normalized
         ? 'Recording ready. Volume balanced to about -16 LUFS with -1 dB peak protection. Last 0.2s trimmed.'
         : 'Recording ready. Original audio was kept.';
@@ -602,13 +615,13 @@ async function toggleCardRecording(node, sentence, preview) {
     };
     recorder.start();
     recordButton.classList.add('recording');
-    recordButton.textContent = '■ Stop recording';
-    status.textContent = 'Recording… Automatic volume control is off. Keep a steady distance from the microphone.';
+    setBilingualText(recordButton, '■ 停止錄音', '■ Stop recording');
+    setBilingualText(status, '錄音中…已關閉自動音量控制，請與麥克風保持穩定距離。', 'Recording… Automatic volume control is off. Keep a steady distance from the microphone.');
     setTimeout(() => {
       if (activeCardRecorder === recorder && recorder.state === 'recording') recorder.stop();
     }, 30000);
   } catch (_) {
-    status.textContent = 'Microphone permission was not allowed.';
+    setBilingualText(status, '未取得麥克風權限。', 'Microphone permission was not allowed.');
   }
 }
 
@@ -628,12 +641,12 @@ function openAudioPinDialog(sentence, node) {
 
 async function submitTeacherAudio() {
   const pin = $('audioPinInput').value.trim();
-  if (!pin) { $('audioSaveMessage').textContent = 'Enter the teacher PIN.'; return; }
+  if (!pin) { setBilingualText($('audioSaveMessage'), '請輸入老師 PIN。', 'Enter the teacher PIN.'); return; }
   if (!pendingModelSave) { $('audioPinDialog').close(); return; }
   const {sentence, recording} = pendingModelSave;
   const button = $('confirmAudioSave');
   button.disabled = true;
-  $('audioSaveMessage').textContent = 'Uploading the teacher recording…';
+  setBilingualText($('audioSaveMessage'), '正在上傳老師錄音…', 'Uploading the teacher recording…');
   try { localStorage.setItem('csbSubmissionPin', pin); } catch (_) {}
 
   try {
@@ -651,7 +664,7 @@ async function submitTeacherAudio() {
     if (saved) { saved.audioPath = path; saved.audioMime = mime; saved.standardAudioUrl = path; }
     teacherAudioCache.delete(sentence.recordId);
     renderSentences();
-    $('audioSaveMessage').textContent = 'Teacher recording saved! The model button now uses your voice.';
+    setBilingualText($('audioSaveMessage'), '老師錄音已儲存！示範按鈕現在會播放你的聲音。', 'Teacher recording saved! The model button now uses your voice.');
     button.disabled = false;
     setTimeout(() => $('audioPinDialog').close(), 1300);
   } catch (err) {
@@ -674,13 +687,13 @@ function openDeleteDialog(sentence) {
 
 async function submitDeleteSentence() {
   const pin = $('deletePinInput').value.trim();
-  if (!pin) { $('deleteMessage').textContent = 'Enter the teacher PIN.'; return; }
+  if (!pin) { setBilingualText($('deleteMessage'), '請輸入老師 PIN。', 'Enter the teacher PIN.'); return; }
   if (!pendingDeleteSentence) { $('deleteDialog').close(); return; }
 
   const sentence = pendingDeleteSentence;
   const button = $('confirmDelete');
   button.disabled = true;
-  $('deleteMessage').textContent = 'Deleting sentence…';
+  setBilingualText($('deleteMessage'), '正在刪除句子…', 'Deleting sentence…');
   try { localStorage.setItem('csbSubmissionPin', pin); } catch (_) {}
 
   try {
@@ -695,7 +708,7 @@ async function submitDeleteSentence() {
     renderSentences();
     renderCourse(); /* 課程課文分頁也要即時重繪，避免刪掉的卡片殘留 */
     pendingDeleteSentence = null;
-    $('deleteMessage').textContent = 'Sentence deleted.';
+    setBilingualText($('deleteMessage'), '句子已刪除。', 'Sentence deleted.');
     setTimeout(() => $('deleteDialog').close(), 650);
   } catch (err) {
     button.disabled = false;
@@ -730,7 +743,7 @@ function openEditDialog(sentence) {
   try { $('editPinInput').value = localStorage.getItem('csbSubmissionPin') || ''; } catch (_) {}
   $('editMessage').textContent = '';
   $('confirmEdit').disabled = false;
-  $('confirmEdit').textContent = 'Save changes';
+  setBilingualText($('confirmEdit'), '儲存變更', 'Save changes');
   updateEditWarnings();
   $('editDialog').showModal();
   setTimeout(() => $('editHindi').focus(), 50);
@@ -768,7 +781,7 @@ function updateEditWarnings() {
   }
   if (!warnings.length) { box.classList.add('hidden'); box.innerHTML = ''; return; }
   box.classList.remove('hidden');
-  box.innerHTML = '<strong>Please check before saving:</strong>';
+  box.innerHTML = '<strong>儲存前請檢查： <span class="en-sub">Please check before saving:</span></strong>';
   const list = document.createElement('ul');
   warnings.forEach(w => { const li = document.createElement('li'); li.textContent = w; list.appendChild(li); });
   box.appendChild(list);
@@ -801,7 +814,7 @@ function buildEditedPaste() {
    same recordId and any attached teacher recording. */
 async function submitEdit() {
   const pin = $('editPinInput').value.trim();
-  if (!pin) { $('editMessage').textContent = 'Enter the teacher PIN.'; return; }
+  if (!pin) { setBilingualText($('editMessage'), '請輸入老師 PIN。', 'Enter the teacher PIN.'); return; }
   if (!pendingEditSentence) { $('editDialog').close(); return; }
   const original = pendingEditSentence;
   const edited = {
@@ -819,7 +832,7 @@ async function submitEdit() {
 
   const button = $('confirmEdit');
   button.disabled = true;
-  $('editMessage').textContent = 'Saving changes…';
+  setBilingualText($('editMessage'), '正在儲存變更…', 'Saving changes…');
   try { localStorage.setItem('csbSubmissionPin', pin); } catch (_) {}
 
   const content = buildEditedPaste();
@@ -843,7 +856,7 @@ async function submitEdit() {
     renderSentences();
     renderCourse();
     pendingEditSentence = null;
-    $('editMessage').textContent = 'Changes saved.';
+    setBilingualText($('editMessage'), '變更已儲存。', 'Changes saved.');
     setTimeout(() => $('editDialog').close(), 700);
   } catch (err) {
     button.disabled = false;
@@ -911,7 +924,7 @@ function createCard(sentence, preview = false) {
 }
 
 function speakChinese(text, button) {
-  if (!('speechSynthesis' in window)) return alert('Speech is not supported in this browser. Please try Chrome, Edge or Safari.');
+  if (!('speechSynthesis' in window)) return alert('這個瀏覽器不支援語音播放，請用 Chrome、Edge 或 Safari。\nSpeech is not supported in this browser. Please try Chrome, Edge or Safari.');
   speechSynthesis.cancel();
   const utterance = new SpeechSynthesisUtterance(text);
   utterance.lang = state.settings.defaultVoice || 'zh-TW';
@@ -924,7 +937,7 @@ function speakChinese(text, button) {
 }
 
 function speakHindi(text, button) {
-  if (!('speechSynthesis' in window)) return alert('Speech is not supported in this browser. Please try Chrome, Edge or Safari.');
+  if (!('speechSynthesis' in window)) return alert('這個瀏覽器不支援語音播放，請用 Chrome、Edge 或 Safari。\nSpeech is not supported in this browser. Please try Chrome, Edge or Safari.');
   speechSynthesis.cancel();
   const utterance = new SpeechSynthesisUtterance(text);
   utterance.lang = 'hi-IN';
@@ -999,7 +1012,7 @@ function speakLabText(text, button) {
   const original = button && button.textContent;
   speakChinese(text, button || document.createElement('button'));
   if (button) {
-    button.textContent = '♪ Playing';
+    setBilingualText(button, '♪ 播放中', '♪ Playing');
     setTimeout(() => { button.textContent = original; }, 1200);
   }
 }
@@ -1017,7 +1030,7 @@ function playStandardTone(src, button, fallbackText) {
   resetToneAudioButton();
   if (!button.dataset.label) button.dataset.label = button.textContent;
   activeToneButton = button;
-  button.textContent = '♪ Playing';
+  setBilingualText(button, '♪ 播放中', '♪ Playing');
   button.classList.add('playing');
   standardToneAudio.src = src;
   standardToneAudio.play().catch(() => {
@@ -1089,7 +1102,7 @@ async function analyseRecording(blob) {
 async function toggleRecording() {
   if (recorder && recorder.state === 'recording') { recorder.stop(); return; }
   if (!navigator.mediaDevices || !window.MediaRecorder) {
-    $('recordingStatus').textContent='Recording is not supported here. Try Chrome or Safari.'; return;
+    setBilingualText($('recordingStatus'), '這裡不支援錄音，請用 Chrome 或 Safari。', 'Recording is not supported here. Try Chrome or Safari.'); return;
   }
   try {
     const stream=await getNaturalVoiceStream();
@@ -1100,14 +1113,14 @@ async function toggleRecording() {
       const blob=new Blob(recordedChunks,{type:recorder.mimeType||'audio/webm'});
       if(recordedUrl) URL.revokeObjectURL(recordedUrl); recordedUrl=URL.createObjectURL(blob);
       $('recordedAudio').src=recordedUrl; $('playRecording').disabled=false;
-      $('recordTone').classList.remove('recording'); $('recordTone').textContent='● Start recording';
-      $('recordingStatus').textContent='Recording ready. Compare the two lines.';
+      $('recordTone').classList.remove('recording'); setBilingualText($('recordTone'), '● 開始錄音', '● Start recording');
+      setBilingualText($('recordingStatus'), '錄音就緒，比較兩條線。', 'Recording ready. Compare the two lines.');
       try { await analyseRecording(blob); } catch(e) { $('recordingStatus').textContent=e.message+' Try again in a quiet place.'; }
     };
-    recorder.start(); $('recordTone').classList.add('recording'); $('recordTone').textContent='■ Stop recording';
-    $('recordingStatus').textContent='Recording… Automatic volume control is off. Say the syllable for about one second.';
+    recorder.start(); $('recordTone').classList.add('recording'); setBilingualText($('recordTone'), '■ 停止錄音', '■ Stop recording');
+    setBilingualText($('recordingStatus'), '錄音中…已關閉自動音量控制，請把音節唸約一秒。', 'Recording… Automatic volume control is off. Say the syllable for about one second.');
     setTimeout(()=>{if(recorder&&recorder.state==='recording')recorder.stop();},3500);
-  } catch (_) { $('recordingStatus').textContent='Microphone permission was not allowed. Please allow it and try again.'; }
+  } catch (_) { setBilingualText($('recordingStatus'), '未取得麥克風權限，請允許後再試一次。', 'Microphone permission was not allowed. Please allow it and try again.'); }
 }
 
 function renderHomophones(key='shi4') {
@@ -1357,7 +1370,7 @@ function validatePinyin(pinyinText) {
 function handlePreview() {
   const pastedText = $('pasteInput').value.trim();
   const text = decodeMobileClipboardText(pastedText);
-  if (!text) { $('parseMessage').textContent = 'Paste an AI answer first.'; return; }
+  if (!text) { setBilingualText($('parseMessage'), '請先貼上 AI 的回答。', 'Paste an AI answer first.'); return; }
   if (text !== pastedText) $('pasteInput').value = text;
   const parsed = parsePaste(text);
   const missing = [['Hindi',parsed.hindiSentence],['Chinese',parsed.chineseSentence],['Pinyin',parsed.pinyin],['Roman',parsed.romanHindi],['Explanation',parsed.hindiExplanation]].filter(([,v]) => !v).map(([k]) => k);
@@ -1395,7 +1408,7 @@ function handlePreview() {
     const box = document.createElement('div');
     box.className = 'preview-warnings';
     box.setAttribute('role', 'status');
-    box.innerHTML = '<strong>Please check before saving:</strong>';
+    box.innerHTML = '<strong>儲存前請檢查： <span class="en-sub">Please check before saving:</span></strong>';
     const list = document.createElement('ul');
     warnings.forEach(w => { const li = document.createElement('li'); li.textContent = w; list.appendChild(li); });
     box.appendChild(list);
@@ -1414,13 +1427,13 @@ function receiveBank(data) {
   $('ownerName').textContent = state.settings.ownerName && state.settings.ownerName !== 'Your Name' ? `Made for ${state.settings.ownerName}` : 'A personal language notebook';
   document.title = state.settings.bankName || 'My Chinese Sentence Bank';
   $('sentenceCount').textContent = state.sentences.length; $('categoryCount').textContent = state.categories.length;
-  $('apiStatus').className = 'live-status ready'; $('apiStatus').innerHTML = '<i></i> Firebase connected';
+  $('apiStatus').className = 'live-status ready'; $('apiStatus').innerHTML = '<i></i> Firebase 已連線 <span class="en-sub">Firebase connected</span>';
   renderFilters(); renderSentences(); renderCourse();
   saveBankCache();
 }
 
 function showApiError(message, canRetry) {
-  $('apiStatus').className = 'live-status error'; $('apiStatus').innerHTML = '<i></i> Connection problem';
+  $('apiStatus').className = 'live-status error'; $('apiStatus').innerHTML = '<i></i> 連線有問題 <span class="en-sub">Connection problem</span>';
   const grid = $('sentenceGrid');
   grid.innerHTML = '';
   const card = document.createElement('div');
@@ -1428,9 +1441,9 @@ function showApiError(message, canRetry) {
   card.textContent = message + ' ';
   if (canRetry) {
     const button = document.createElement('button');
-    button.type = 'button'; button.className = 'secondary-button'; button.textContent = 'Try again';
+    button.type = 'button'; button.className = 'secondary-button'; setBilingualText(button, '再試一次', 'Try again');
     button.addEventListener('click', () => {
-      grid.innerHTML = '<div class="loading-card">Loading your sentences…</div>';
+      grid.innerHTML = '<div class="loading-card">載入句子中… <span class="en-sub">Loading your sentences…</span></div>';
       loadBank();
     });
     card.appendChild(button);
@@ -1475,13 +1488,13 @@ function openPinDialog() {
 
 async function submitSentence() {
   const pin = $('pinInput').value.trim();
-  if (!pin) { $('saveMessage').textContent = 'Enter the submission PIN.'; return; }
+  if (!pin) { setBilingualText($('saveMessage'), '請輸入提交 PIN。', 'Enter the submission PIN.'); return; }
   if (!state.preview) { $('pinDialog').close(); return; }
   if ($('rememberPin').checked) { try { localStorage.setItem('csbSubmissionPin', pin); } catch (_) {} }
   else { try { localStorage.removeItem('csbSubmissionPin'); } catch (_) {} }
 
   $('confirmSave').disabled = true;
-  $('saveMessage').textContent = 'Saving sentence…';
+  setBilingualText($('saveMessage'), '正在儲存句子…', 'Saving sentence…');
   const submitted = { ...state.preview };
 
   /* 若正在瀏覽某一課（courseState.lesson > 0），AI 新增的句子歸入該課「補充」；
@@ -1549,9 +1562,9 @@ function handleBankFailure(attempt, maxAttempts, message) {
     notice.className = 'cache-notice';
     notice.innerHTML = 'You are offline. Showing the last saved copy of your sentence bank. ';
     const button = document.createElement('button');
-    button.type = 'button'; button.className = 'text-button'; button.textContent = 'Try again';
+    button.type = 'button'; button.className = 'text-button'; setBilingualText(button, '再試一次', 'Try again');
     button.addEventListener('click', () => {
-      $('sentenceGrid').innerHTML = '<div class="loading-card">Loading your sentences…</div>';
+      $('sentenceGrid').innerHTML = '<div class="loading-card">載入句子中… <span class="en-sub">Loading your sentences…</span></div>';
       loadBank();
     });
     notice.appendChild(button);
@@ -1589,7 +1602,7 @@ $('pasteInput').addEventListener('paste', () => {
     const decoded = decodeMobileClipboardText(pastedText);
     if (decoded !== pastedText.trim()) {
       $('pasteInput').value = decoded;
-      $('parseMessage').textContent = 'Mobile encoded text was decoded automatically. You can preview it now.';
+      setBilingualText($('parseMessage'), '手機編碼文字已自動解碼，現在可以預覽。', 'Mobile encoded text was decoded automatically. You can preview it now.');
     }
   }, 0);
 });
@@ -1623,8 +1636,8 @@ document.addEventListener('keydown', event => {
 $('helpButton').addEventListener('click', () => $('helpDialog').showModal());
 $('copyPrompt').addEventListener('click', async () => {
   await navigator.clipboard.writeText(AI_PROMPT_TEMPLATE.replace('{{STUDENT_SENTENCE}}', '[Paste one Hindi or Romanized Hindi sentence here]'));
-  const button = $('copyPrompt'); button.textContent = 'Copied!';
-  setTimeout(() => { button.textContent = 'Copy AI prompt'; }, 1400);
+  const button = $('copyPrompt'); setBilingualText(button, '已複製！', 'Copied!');
+  setTimeout(() => { setBilingualText(button, '複製 AI 提示詞', 'Copy AI prompt'); }, 1400);
 });
 $('closeHelp').addEventListener('click', () => $('helpDialog').close());
 $('helpDialog').addEventListener('click', e => { if (e.target === $('helpDialog')) $('helpDialog').close(); });
@@ -1640,7 +1653,7 @@ $('deletePinInput').addEventListener('keydown', e => { if (e.key === 'Enter') su
 $('closeDelete').addEventListener('click', () => { pendingDeleteSentence = null; $('deleteDialog').close(); });
 $('confirmEdit').addEventListener('click', submitEdit);
 $('editPinInput').addEventListener('keydown', e => { if (e.key === 'Enter') submitEdit(); });
-$('closeEdit').addEventListener('click', () => { pendingEditSentence = null; $('confirmEdit').textContent = 'Save changes'; $('editDialog').close(); });
+$('closeEdit').addEventListener('click', () => { pendingEditSentence = null; setBilingualText($('confirmEdit'), '儲存變更', 'Save changes'); $('editDialog').close(); });
 ['editHindi', 'editChinese', 'editPinyin', 'editRoman', 'editExplanation'].forEach(id => $(id).addEventListener('input', updateEditWarnings));
 initPronunciationLab();
 loadBank();
